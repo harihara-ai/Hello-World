@@ -101,6 +101,12 @@ class UnitTests(unittest.TestCase):
                 RunResult("a", "train", category="REGRESSION")]
         self.assertEqual(merged_category(runs), "REGRESSION")
 
+    def test_claims_success(self):
+        from seed.agent import claims_success
+        self.assertTrue(claims_success("I fixed the off-by-one; tests pass."))
+        self.assertFalse(claims_success("I could not reproduce the bug."))
+        self.assertFalse(claims_success("Here is what I looked at."))
+
     def test_is_better(self):
         def s(train, held, cost=1.0, turns=10):
             return {"train": {"pass_rate": train, "cost": cost, "turns": turns},
@@ -160,6 +166,8 @@ class EndToEnd(unittest.TestCase):
         # "breaker" passes its hidden test but breaks the suite: the invariant fails it.
         self.assertEqual(base["all"]["categories"],
                          {"PASS": 1, "CHEATED": 1, "REGRESSION": 1, "NO_CHANGE": len(BUGS) - 3})
+        self.assertEqual(base["all"]["false_claims"], 1)  # "breaker" said "fixed" but broke the suite
+        self.assertEqual(base["all"]["input_tokens"], 1500 * len(BUGS))
 
         v0 = quiet(loop.run_build, self.repo, self.paths, cfg)
         self.assertEqual(v0["all"]["passed"], 1)
@@ -188,6 +196,21 @@ class EndToEnd(unittest.TestCase):
         quiet(loop.run_reflect, self.repo, self.paths, cfg)
         self.assertTrue(self.paths.proposals.exists())
         self.assertIn("generations:", loop.report(self.paths))
+
+    def test_rescore_applies_a_stricter_judge_without_model_calls(self):
+        self.mine()
+        cfg = json.loads(self.paths.config.read_text())
+        lax = dict(cfg, regression_cmd=None)
+        quiet(loop.run_baseline, self.repo, self.paths, lax)
+        before = {json.loads(f.read_text())["category"]
+                  for f in (self.paths.runs / "baseline").glob("*/run0/result.json")}
+        self.assertNotIn("REGRESSION", before)  # without the invariant, "breaker" passes
+        os.environ["SEED_FAKE_FIXES"] = "{}"  # any model call would now fail differently
+        from seed.judge import rescore
+        from seed.mine import load_tasks
+        summary, _ = rescore(self.repo, self.paths, cfg, load_tasks(self.paths), "baseline")
+        self.assertEqual([(old, new) for _, _, old, new in summary["changed"]], [("PASS", "REGRESSION")])
+        self.assertEqual(summary["all"]["passed"], 1)
 
     def test_tampered_judge_refuses_to_score(self):
         self.mine()

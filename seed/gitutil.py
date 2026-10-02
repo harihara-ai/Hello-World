@@ -48,9 +48,12 @@ def changed_files(worktree):
     return paths
 
 
-def diff_patch(worktree):
+def diff_patch(worktree, paths=None):
+    """Patch of the working tree against HEAD, optionally limited to `paths` ([] means empty)."""
+    if paths is not None and not paths:
+        return ""
     git(worktree, "add", "-A", "--intent-to-add", check=False)
-    return git(worktree, "diff", check=False)
+    return git(worktree, "diff", "--binary", *(["--", *paths] if paths else []), check=False)
 
 
 def tree_hash(paths):

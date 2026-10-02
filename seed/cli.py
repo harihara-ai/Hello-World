@@ -99,6 +99,41 @@ def cmd_run(args, paths):
     print(loop.report(paths))
 
 
+def cmd_rescore(args, paths):
+    """Re-grade recorded runs with the current judge (e.g. after making it stricter). Free."""
+    from .config import load_state
+    from .judge import rescore
+    from .mine import load_tasks
+    cfg = load_config(paths)
+    tasks = load_tasks(paths, exclude=load_state(paths).get("excluded_tasks", []))
+    summary, _ = rescore(paths.repo, paths, cfg, tasks, args.label)
+    loop.log_event(paths, kind="rescore", label=args.label, score=summary)
+    for task_id, run, old, new in summary["changed"]:
+        print(f"  {task_id} {run}: {old} -> {new}")
+    print(f"rescored {args.label}: {loop._fmt(summary)}")
+
+
+def cmd_try(args, paths):
+    """One capped attempt at one task: a smoke test of the real agent path."""
+    import time
+    from dataclasses import asdict
+    from .judge import check_integrity, run_task
+    from .mine import load_tasks
+    cfg = load_config(paths)
+    cfg["max_turns"] = args.max_turns or cfg["max_turns"]
+    cfg["max_cost_per_task_usd"] = args.max_cost or cfg["max_cost_per_task_usd"]
+    tasks = {t["id"]: t for t in load_tasks(paths)}
+    task = tasks.get(args.task) or sys.exit(f"no task {args.task}; ids: {', '.join(tasks)}")
+    check_integrity(paths)
+    label = f"try-{time.strftime('%Y%m%d-%H%M%S')}"
+    out = paths.runs / label / task["id"] / "run0"
+    res = run_task(paths.repo, paths, cfg, task, paths.harness if args.harness else None, out)
+    loop.spend(paths, res.cost)
+    loop.log_event(paths, kind="try", label=label, task=task["id"], harness=bool(args.harness), result=asdict(res))
+    print(json.dumps(asdict(res), indent=2))
+    print(f"evidence in {out}")
+
+
 def cmd_report(args, paths):
     print(loop.report(paths))
 
@@ -119,6 +154,13 @@ def main(argv=None):
     sub.add_parser("reflect", help="Reflector writes seed-proposals.md for human review")
     s = sub.add_parser("run", help="baseline, build, evolve, reflect")
     s.add_argument("--generations", type=int)
+    s = sub.add_parser("rescore", help="re-grade recorded runs with the current judge, no model calls")
+    s.add_argument("label", help="a directory under .seed/runs, e.g. baseline, v0, gen3")
+    s = sub.add_parser("try", help="one capped attempt at one task (smoke test)")
+    s.add_argument("task")
+    s.add_argument("--harness", action="store_true", help="install the current harness (default: none)")
+    s.add_argument("--max-turns", type=int)
+    s.add_argument("--max-cost", type=float)
     sub.add_parser("report", help="summarize log.jsonl")
     args = p.parse_args(argv)
     repo = Path(gitutil.git(args.repo, "rev-parse", "--show-toplevel").strip())

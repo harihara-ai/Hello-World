@@ -17,7 +17,9 @@ FIXES = json.loads(os.environ["SEED_FAKE_FIXES"])  # keyword -> [old, new] in ca
 
 
 def emit(result, cost=0.01, turns=3):
-    print(json.dumps({"result": result, "total_cost_usd": cost, "num_turns": turns}))
+    print(json.dumps({"result": result, "total_cost_usd": cost, "num_turns": turns,
+                      "usage": {"input_tokens": 1000, "cache_read_input_tokens": 500, "output_tokens": 200},
+                      "modelUsage": {"fake-model": {}}}))
 
 
 def task(prompt):

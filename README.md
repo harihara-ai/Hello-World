@@ -73,6 +73,15 @@ Notes on choices the spec leaves open:
   as `invalid` and left out of the pass rate rather than counted against the harness.
 - **No blind retries.** Each harness change is fingerprinted by its added and removed lines. A change
   identical to one already rejected is reverted without spending a scoring run.
+- **Claim vs. evidence.** Each run records whether the agent's final message claims success.
+  `false_claims` counts runs that claimed success while the hidden tests or the suite said otherwise.
+  It is reported, but it never enters the keep/revert decision.
+- **Tokens and models.** Input tokens (including cache reads and writes), output tokens and model names
+  come from `claude -p`'s JSON output and are summed per generation, next to cost and turns.
+- **Re-scoring for free.** Each run saves only the agent's own diff. `seed rescore <label>` replays the
+  saved diffs on clean checkouts and grades them with the current judge, with no model calls. Use it
+  after making the judge stricter.
+- **Smoke test.** `seed try <task-id> --max-turns 15 --max-cost 1` runs one capped attempt at one task.
 - **Gate 2.** The baseline runs each task `baseline_runs` times (default 3). Tasks with mixed
   results are dropped from all later scoring.
 - **Roles never touch your working tree.** Observer, Builder and Evolver run in a throwaway

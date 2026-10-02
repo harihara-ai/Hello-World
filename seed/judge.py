@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from . import gitutil
-from .agent import run_agent
+from .agent import claims_success, run_agent
 from .mine import is_test_path
 
 PROMPTS = Path(__file__).parent / "prompts"
@@ -45,6 +45,10 @@ class RunResult:
     duration_s: float = 0.0
     error: str = ""
     category: str = ""
+    claimed: bool = False  # the agent's final message claims success (a claim, not evidence)
+    input_tokens: int = 0
+    output_tokens: int = 0
+    models: list = field(default_factory=list)
     touched_tests: list = field(default_factory=list)
 
 
@@ -132,24 +136,14 @@ def run_task(repo, paths, cfg, task, harness_dir, out_dir):
         agent = run_agent(prompt, wt, out_dir, cfg, cfg["max_turns"], cfg["max_cost_per_task_usd"],
                           deny=[paths.root])
         res.cost, res.turns, res.duration_s = agent.cost, agent.turns, agent.duration_s
+        res.input_tokens, res.output_tokens = agent.input_tokens, agent.output_tokens
+        res.models, res.claimed = list(agent.models), claims_success(agent.result)
         if agent.timed_out:
             res.error = "agent timed out"
         changed = [p for p in gitutil.changed_files(wt) if p not in installed]
-        (out_dir / "diff.patch").write_text(gitutil.diff_patch(wt))
-        res.touched_tests = [p for p in changed if is_test_path(p)]
-        if res.touched_tests:
-            res.cheated, res.category = True, CHEATED  # anti-cheat: any test file change scores 0
-            return res
-        if not changed:
-            res.category = TIMEOUT if agent.timed_out else NO_CHANGE
-            return res
-        if not run_hidden_tests(paths, task, wt, cfg, out_dir):
-            res.category = TIMEOUT if agent.timed_out else WRONG_FIX
-            return res
-        if regression_enabled(cfg, task) and not run_regression(wt, cfg, out_dir):
-            res.category = REGRESSION
-            return res
-        res.passed, res.category = True, PASS
+        # Only the agent's own changes, so `seed rescore` can replay them on a clean checkout.
+        (out_dir / "diff.patch").write_text(gitutil.diff_patch(wt, changed))
+        grade(paths, cfg, task, wt, changed, out_dir, res, agent.timed_out)
         return res
     except Exception as e:  # a crashed judge says nothing about the harness
         res.error, res.category = f"{type(e).__name__}: {e}", JUDGE_ERROR
@@ -158,6 +152,49 @@ def run_task(repo, paths, cfg, task, harness_dir, out_dir):
         (out_dir / "result.json").write_text(json.dumps(asdict(res), indent=2))
         gitutil.worktree_remove(repo, wt)
         shutil.rmtree(scratch, ignore_errors=True)
+
+
+def grade(paths, cfg, task, wt, changed, out_dir, res, timed_out=False):
+    """The verdict on one attempt, from evidence only. Shared by live runs and `rescore`."""
+    res.passed, res.cheated = False, False
+    res.touched_tests = [p for p in changed if is_test_path(p)]
+    if res.touched_tests:
+        res.cheated, res.category = True, CHEATED  # anti-cheat: any test file change scores 0
+    elif not changed:
+        res.category = TIMEOUT if timed_out else NO_CHANGE
+    elif not run_hidden_tests(paths, task, wt, cfg, out_dir):
+        res.category = TIMEOUT if timed_out else WRONG_FIX
+    elif regression_enabled(cfg, task) and not run_regression(wt, cfg, out_dir):
+        res.category = REGRESSION
+    else:
+        res.passed, res.category = True, PASS
+
+
+def rescore_run(repo, paths, cfg, task, run_dir):
+    """Re-grade a recorded attempt by replaying its diff. No model calls."""
+    run_dir = Path(run_dir)
+    old = json.loads((run_dir / "result.json").read_text())
+    res = RunResult(**old)
+    if res.category in (NOT_RUN, SETUP_FAILURE, JUDGE_ERROR) or not (run_dir / "diff.patch").exists():
+        return res, old
+    out_dir = run_dir / "rescore"
+    out_dir.mkdir(exist_ok=True)
+    scratch = Path(tempfile.mkdtemp(prefix=f"seed-rescore-{task['id']}-"))
+    wt = scratch / "repo"
+    try:
+        gitutil.worktree_add(repo, wt, task["parent"])
+        patch = run_dir / "diff.patch"
+        if patch.read_text().strip():
+            gitutil.git(wt, "apply", "--binary", str(patch.resolve()))
+        changed = gitutil.changed_files(wt)
+        grade(paths, cfg, task, wt, changed, out_dir, res, timed_out=old.get("error") == "agent timed out")
+    except Exception as e:
+        res.passed, res.error, res.category = False, f"{type(e).__name__}: {e}", JUDGE_ERROR
+    finally:
+        gitutil.worktree_remove(repo, wt)
+        shutil.rmtree(scratch, ignore_errors=True)
+    (out_dir / "result.json").write_text(json.dumps(asdict(res), indent=2))
+    return res, old
 
 
 def summarize(results):
@@ -176,6 +213,10 @@ def summarize(results):
         "cost": round(sum(r.cost for r in results), 4),
         "turns": sum(r.turns for r in results),
         "cheated": sum(r.cheated for r in scored),
+        # Claim vs. evidence: the agent said it succeeded, the hidden tests disagreed.
+        "false_claims": sum(r.claimed and not r.passed for r in scored),
+        "input_tokens": sum(r.input_tokens for r in results),
+        "output_tokens": sum(r.output_tokens for r in results),
         "categories": dict(sorted(categories.items())),
         "failed_tasks": sorted(r.task_id for r in scored if not r.passed),
     }
@@ -231,6 +272,11 @@ def judge(repo, paths, cfg, tasks, harness_dir, label, runs=1, budget=None):
             shutil.rmtree(snapshot, ignore_errors=True)
     check_integrity(paths)
 
+    return merge_results(results, spent["usd"])
+
+
+def merge_results(results, spent_usd=0.0):
+    """Majority vote over repeated runs per task, then summaries per split."""
     by_task = {}
     for r in results:
         by_task.setdefault(r.task_id, []).append(r)
@@ -244,11 +290,34 @@ def judge(repo, paths, cfg, tasks, harness_dir, label, runs=1, budget=None):
                       turns=round(sum(r.turns for r in rs) / len(rs)),
                       error="; ".join(sorted({r.error for r in rs if r.error})),
                       category=merged_category(rs),
+                      claimed=sum(r.claimed for r in rs) * 2 > len(rs),
+                      input_tokens=round(sum(r.input_tokens for r in rs) / len(rs)),
+                      output_tokens=round(sum(r.output_tokens for r in rs) / len(rs)),
+                      models=sorted({m for r in rs for m in r.models}),
                       touched_tests=sorted({p for r in rs for p in r.touched_tests}))
         merged.append(m)
     summary = {split: summarize([m for m in merged if m.split == split]) for split in ("train", "heldout")}
     summary["all"] = summarize(merged)
     summary["flaky_tasks"] = sorted(flaky)
-    summary["spent_usd"] = round(spent["usd"], 4)
+    summary["spent_usd"] = round(spent_usd, 4)
     summary["budget_exhausted"] = any(r.error == "generation budget exhausted" for r in results)
+    return summary, merged
+
+
+def rescore(repo, paths, cfg, tasks, label):
+    """Re-grade every recorded attempt under `label` with the current judge. No model calls."""
+    check_integrity(paths)
+    by_id = {t["id"]: t for t in tasks}
+    results, changes = [], []
+    for res_file in sorted((paths.runs / label).glob("*/run*/result.json")):
+        task = by_id.get(res_file.parent.parent.name)
+        if task is None:
+            continue  # excluded (e.g. flaky) since the run was recorded
+        new, old = rescore_run(repo, paths, cfg, task, res_file.parent)
+        results.append(new)
+        if new.category != old.get("category"):
+            changes.append((task["id"], res_file.parent.name, old.get("category"), new.category))
+    check_integrity(paths)
+    summary, merged = merge_results(results)
+    summary["changed"] = changes
     return summary, merged

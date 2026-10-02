@@ -370,4 +370,8 @@ def _fmt(s):
     return (f"train {s['train']['passed']}/{s['train']['total']}  "
             f"held-out {s['heldout']['passed']}/{s['heldout']['total']}  "
             f"cost ${a['cost']:.2f}  turns {a['turns']}"
-            + (f"  failures {fails}" if fails else ""))
+            + (f"  tokens {a.get('input_tokens', 0) // 1000}k in/{a.get('output_tokens', 0) // 1000}k out"
+               if a.get("input_tokens") else "")
+            + (f"  false claims {a['false_claims']}" if a.get("false_claims") else "")
+            + (f"  failures {fails}" if fails else "")
+            + (f"  invalid {a['invalid']}" if a.get("invalid") else ""))
