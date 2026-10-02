@@ -88,6 +88,7 @@ class UnitTests(unittest.TestCase):
     def test_issue_text_strips_trailers(self):
         msg = "Fix x\n\nBody line\n\nSigned-off-by: a <a@b>\nCo-authored-by: c <c@d>\n"
         self.assertEqual(issue_text(msg), "Fix x\n\nBody line")
+        self.assertEqual(issue_text("fix: keep items when maxlen is 0\n\n"), "fix: keep items when maxlen is 0")
 
     def test_summary_leaves_out_judge_side_failures(self):
         from seed.judge import RunResult, merged_category, summarize

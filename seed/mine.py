@@ -32,7 +32,8 @@ def is_test_path(path):
 def issue_text(message):
     """Commit message with git trailers (Signed-off-by etc.) removed."""
     lines = message.strip().splitlines()
-    while lines and (TRAILER_RE.match(lines[-1]) or not lines[-1].strip()):
+    # The subject line is never a trailer, even when it looks like one ("fix: ...").
+    while len(lines) > 1 and (TRAILER_RE.match(lines[-1]) or not lines[-1].strip()):
         lines.pop()
     return "\n".join(lines).strip()
 
@@ -99,6 +100,10 @@ def build_tasks(repo, paths, cfg, validate=None, log=print):
             "src_files": cand["src_files"],
             "split": split_for(cand["sha"], cfg["heldout_fraction"]),
         }
+        if not task["issue"]:
+            log(f"  drop {task_id}: empty commit message")
+            shutil.rmtree(paths.hidden / task_id, ignore_errors=True)
+            continue
         if validate:
             ok, why = validate(task)
             if not ok:

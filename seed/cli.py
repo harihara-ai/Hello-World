@@ -58,7 +58,21 @@ def cmd_mine(args, paths):
     scratch = Path(tempfile.mkdtemp(prefix="seed-validate-"))
     validate = None
     if not args.no_validate:
-        validate = lambda t: validate_task(paths.repo, paths, cfg, t, scratch)
+        # Validation runs the tests twice per candidate, so results are cached across reruns,
+        # keyed by the commit and the commands that judged it.
+        cache_file = paths.root / "validation-cache.json"
+        cache = json.loads(cache_file.read_text()) if cache_file.exists() else {}
+
+        def validate(task):
+            key = f"{task['sha']}|{cfg['test_cmd']}|{cfg.get('regression_cmd')}|{cfg.get('setup_cmd')}"
+            if key not in cache:
+                ok, why = validate_task(paths.repo, paths, cfg, task, scratch)
+                cache[key] = {"ok": ok, "why": why, "regression_check": task.get("regression_check")}
+                cache_file.write_text(json.dumps(cache, indent=2))
+            hit = cache[key]
+            if hit["regression_check"] is not None:
+                task["regression_check"] = hit["regression_check"]
+            return hit["ok"], hit["why"]
     print("Mining fix-with-test commits" + ("" if args.no_validate else " (validating each task)"))
     try:
         tasks = build_tasks(paths.repo, paths, cfg, validate=validate)
