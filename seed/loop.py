@@ -1,4 +1,5 @@
 """Roles (Observer, Builder, Evolver, Reflector), the ratchet, and the fail-fast gates."""
+import hashlib
 import json
 import shutil
 import tempfile
@@ -9,7 +10,16 @@ from pathlib import Path
 from . import gitutil
 from .agent import run_agent
 from .config import load_state, save_state
-from .judge import RunResult, check_integrity, judge, summarize
+from .judge import JUDGE_SIDE, RunResult, check_integrity, judge, summarize
+
+CATEGORY_HELP = {
+    "NO_CHANGE": "the agent changed no source file",
+    "WRONG_FIX": "the agent changed code but the hidden tests still fail",
+    "REGRESSION": "the hidden tests pass but the existing suite broke",
+    "CHEATED": "the agent touched test files, which scores zero",
+    "TIMEOUT": "the agent hit the time limit",
+    "NOT_RUN": "the generation budget ran out",
+}
 from .mine import load_tasks
 
 PROMPTS = Path(__file__).parent / "prompts"
@@ -56,6 +66,15 @@ def harness_commit(paths, message):
 def harness_revert(paths):
     harness_git(paths, "reset", "-q", "--hard", "HEAD~1")
     harness_git(paths, "clean", "-qfdx")
+
+
+def change_fingerprint(paths):
+    """Hash of the added/removed lines of the staged harness edit, so it survives a moved base."""
+    harness_git(paths, "add", "-A")
+    diff = harness_git(paths, "diff", "--cached", "--unified=0", "--", ".", ":(exclude)facts.md")
+    lines = sorted(l.rstrip() for l in diff.splitlines()
+                   if l[:1] in "+-" and not l.startswith(("+++", "---")) and l[1:].strip())
+    return hashlib.sha256("\n".join(lines).encode()).hexdigest()[:16]
 
 
 def change_size(paths):
@@ -194,13 +213,18 @@ def run_build(repo, paths, cfg, out=print):
 def write_digest(paths, digest, merged, label):
     """Inputs for the Evolver: train failures only (held-out stays unseen) and the history."""
     digest.mkdir(parents=True, exist_ok=True)
-    parts = ["# Failed training tasks\n"]
     tasks = {t["id"]: t for t in load_tasks(paths, "train")}
-    for r in merged:
-        if r.split != "train" or r.passed:
-            continue
+    failed = [r for r in merged if r.split == "train" and not r.passed and r.category not in JUDGE_SIDE]
+    counts = {}
+    for r in failed:
+        counts[r.category] = counts.get(r.category, 0) + 1
+    parts = ["# Failed training tasks\n", "## Why they failed\n"]
+    parts += [f"- {cat}: {n} ({CATEGORY_HELP.get(cat, '')})"
+              for cat, n in sorted(counts.items(), key=lambda kv: -kv[1])]
+    parts.append("")
+    for r in failed:
         run_dir = paths.runs / label / r.task_id / "run0"
-        parts.append(f"## Task {r.task_id}\n")
+        parts.append(f"## Task {r.task_id}: {r.category}\n")
         parts.append(f"### Bug report\n{tasks[r.task_id]['issue']}\n")
         if r.cheated:
             parts.append(f"### Scored zero: agent modified test files {r.touched_tests}\n")
@@ -208,7 +232,8 @@ def write_digest(paths, digest, merged, label):
             parts.append(f"### Error\n{r.error}\n")
         for name, title, limit in (("agent.stdout", "Agent final output", 3000),
                                    ("diff.patch", "Agent diff", 4000),
-                                   ("test.log", "Hidden test output", 4000)):
+                                   ("test.log", "Hidden test output", 4000),
+                                   ("regression.log", "Regression suite output", 3000)):
             f = run_dir / name
             if f.exists():
                 text = f.read_text()
@@ -252,11 +277,22 @@ def run_evolve(repo, paths, cfg, generations=None, out=print):
             log_event(paths, kind="candidate", gen=gen, change=change, kept=False, reason="no change made")
             no_gain += 1
             continue
+        fingerprint = change_fingerprint(paths)
+        rejected = {e.get("fingerprint") for e in read_log(paths)
+                    if e["kind"] == "candidate" and not e.get("kept")}
         sha = harness_commit(paths, f"gen {gen}: {change}")
+        if fingerprint in rejected:
+            # Retry rule: the same change that was already rejected is not re-measured.
+            harness_revert(paths)
+            log_event(paths, kind="candidate", gen=gen, change=change, harness=sha, fingerprint=fingerprint,
+                      kept=False, reason="repeats a rejected change")
+            out("  reverted: repeats a rejected change")
+            no_gain += 1
+            continue
         if size > cfg["max_change_lines"]:
             harness_revert(paths)
-            log_event(paths, kind="candidate", gen=gen, change=change, harness=sha, kept=False,
-                      reason=f"change too big ({size} lines > {cfg['max_change_lines']})")
+            log_event(paths, kind="candidate", gen=gen, change=change, harness=sha, fingerprint=fingerprint,
+                      kept=False, reason=f"change too big ({size} lines > {cfg['max_change_lines']})")
             out(f"  reverted: change too big ({size} lines)")
             no_gain += 1
             continue
@@ -271,7 +307,7 @@ def run_evolve(repo, paths, cfg, generations=None, out=print):
             harness_revert(paths)
             no_gain += 1
         log_event(paths, kind="candidate", gen=gen, change=change, harness=sha, lines=size,
-                  score=summary, kept=keep, reason=reason)
+                  fingerprint=fingerprint, score=summary, kept=keep, reason=reason)
         out(f"  {'KEPT' if keep else 'REVERTED'} ({reason}): {change}\n{_fmt(summary)}")
     return best
 
@@ -329,7 +365,9 @@ def report(paths):
 
 
 def _fmt(s):
+    a = s["all"]
+    fails = {k: v for k, v in a.get("categories", {}).items() if k != "PASS"}
     return (f"train {s['train']['passed']}/{s['train']['total']}  "
             f"held-out {s['heldout']['passed']}/{s['heldout']['total']}  "
-            f"cost ${s['all']['cost']:.2f}  turns {s['all']['turns']}"
-            + (f"  cheated {s['all']['cheated']}" if s['all']['cheated'] else ""))
+            f"cost ${a['cost']:.2f}  turns {a['turns']}"
+            + (f"  failures {fails}" if fails else ""))

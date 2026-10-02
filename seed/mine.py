@@ -105,6 +105,8 @@ def build_tasks(repo, paths, cfg, validate=None, log=print):
                 log(f"  drop {task_id}: {why}")
                 shutil.rmtree(paths.hidden / task_id, ignore_errors=True)
                 continue
+            if why:
+                log(f"  note {task_id}: {why}")
         log(f"  keep {task_id} [{task['split']}] {task['issue'].splitlines()[0][:70]}")
         tasks.append(task)
     _ensure_both_splits(tasks)

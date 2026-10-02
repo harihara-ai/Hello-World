@@ -14,7 +14,7 @@ It uses only the Python standard library (3.9+), plus `git` and the `claude` CLI
 ```sh
 cd /path/to/repo-under-test
 python -m seed survey            # needs >= 15 fix-with-test commits
-python -m seed init              # creates .seed/; review .seed/judge/config.json (test_cmd!)
+python -m seed init              # creates .seed/; review test_cmd and regression_cmd in .seed/judge/config.json
 python -m seed mine              # mines tasks, checks fail-before/pass-after, freezes the judge
 python -m seed baseline          # plain Claude Code (Gates 0 and 2)
 python -m seed build             # Observer -> Builder -> v0, scored (Gate 1)
@@ -46,11 +46,11 @@ Run it from a checkout of this repo (`PYTHONPATH=/path/to/this/repo`), or pass `
 | Spec | Where |
 |---|---|
 | Mine fix + test commits; hide the tests; the issue text is the commit message | `seed/mine.py` |
-| Judge: worktree at the parent, install the harness, `claude -p` with caps, anti-cheat diff check, run hidden tests | `seed/judge.py` |
+| Judge: worktree at the parent, install the harness, `claude -p` with caps, anti-cheat diff check, run hidden tests, regression suite | `seed/judge.py` |
 | Headless agent with max turns, max $ per task, timeout | `seed/agent.py` |
 | Observer, Builder, Evolver, Reflector prompts | `seed/prompts/*.md` |
 | Ratchet: keep if train goes up and held-out does not drop; tie-break on cost, then turns | `loop.is_better` |
-| One small change per generation (diff size cap, default 80 lines) | `loop.run_evolve` |
+| One small change per generation (diff size cap, default 80 lines); an exact repeat of a rejected change is refused without scoring | `loop.run_evolve` |
 | Gates 0, 1, 2; caps on generations, $ per generation, total $; stop after 3 generations with no gain | `seed/loop.py`, `seed/config.py` |
 | The Evolver sees train failures only; held-out stays unseen | `loop.write_digest` |
 | Reflector proposals are never applied automatically | `prompts/reflector.md` |
@@ -63,6 +63,16 @@ Notes on choices the spec leaves open:
 - **Test command.** `test_cmd` in `judge/config.json` is a human decision and is frozen with the judge.
   `{tests}` expands to the hidden test paths and `{test_names}` to their basenames
   (for JUnit-style `-Dtest=`). `init` guesses a value from the build files.
+- **Regression check.** A run passes only if the hidden tests pass *and* `regression_cmd`
+  (the repo's existing suite) stays green. During `mine`, the suite is run on each reference fix;
+  if it fails there too (broken or environment-dependent tests), the check is turned off for that task
+  and `mine` prints a note. Set `regression_cmd` to null to disable it.
+- **Failure categories.** Every run is labelled `PASS`, `CHEATED`, `NO_CHANGE`, `WRONG_FIX`,
+  `REGRESSION`, `TIMEOUT` or `NOT_RUN`. The Evolver's input starts with a count by category, and the log
+  and report show it. `SETUP_FAILURE` and `JUDGE_ERROR` are problems on the Judge's side: they are reported
+  as `invalid` and left out of the pass rate rather than counted against the harness.
+- **No blind retries.** Each harness change is fingerprinted by its added and removed lines. A change
+  identical to one already rejected is reverted without spending a scoring run.
 - **Gate 2.** The baseline runs each task `baseline_runs` times (default 3). Tasks with mixed
   results are dropped from all later scoring.
 - **Roles never touch your working tree.** Observer, Builder and Evolver run in a throwaway
@@ -84,8 +94,9 @@ python -m unittest discover -s tests -v
 ```
 
 `tests/fake_agent.py` stands in for `claude -p` in every role, so the whole loop runs on a synthetic
-repo with no API calls. The suite checks mining, hidden tests, the anti-cheat zero, a sabotaging
-change reverted by the ratchet, an oversized change rejected, Gate 0, and a tampered judge refusing to score.
+repo with no API calls. The suite checks mining, hidden tests, the anti-cheat zero, a fix that passes its
+hidden test but breaks the suite (`REGRESSION`), a sabotaging change reverted by the ratchet, an oversized
+change rejected, a repeated rejected change refused, Gate 0, and a tampered judge refusing to score.
 
 ## Not done yet
 

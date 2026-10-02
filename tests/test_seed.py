@@ -26,6 +26,7 @@ BUGS = {
     "triple": ("return x * 4", "return x * 3"),
     "cube": ("return x * x", "return x * x * x"),
     "cheat": ("return 0", "return 1"),
+    "breaker": ("return 7", "return 8"),
 }
 FIXES = {k: list(v) for k, v in BUGS.items()}
 
@@ -54,7 +55,7 @@ def make_repo(root):
     sh(repo, "git", "add", "-A")
     sh(repo, "git", "commit", "-q", "-m", "Initial calc")
     expected = {"double": (3, 6), "square": (3, 9), "negate": (3, -3), "halve": (8, 4),
-                "triple": (3, 9), "cube": (2, 8), "cheat": (5, 1)}
+                "triple": (3, 9), "cube": (2, 8), "cheat": (5, 1), "breaker": (1, 8)}
     for k, (_, fixed) in BUGS.items():
         funcs[k] = fixed
         write_calc()
@@ -88,6 +89,18 @@ class UnitTests(unittest.TestCase):
         msg = "Fix x\n\nBody line\n\nSigned-off-by: a <a@b>\nCo-authored-by: c <c@d>\n"
         self.assertEqual(issue_text(msg), "Fix x\n\nBody line")
 
+    def test_summary_leaves_out_judge_side_failures(self):
+        from seed.judge import RunResult, merged_category, summarize
+        rs = [RunResult("a", "train", passed=True, category="PASS"),
+              RunResult("b", "train", category="WRONG_FIX"),
+              RunResult("c", "train", category="SETUP_FAILURE")]
+        s = summarize(rs)
+        self.assertEqual((s["passed"], s["total"], s["invalid"]), (1, 2, 1))
+        self.assertEqual(s["categories"], {"PASS": 1, "SETUP_FAILURE": 1, "WRONG_FIX": 1})
+        runs = [RunResult("a", "train", category="WRONG_FIX"), RunResult("a", "train", category="REGRESSION"),
+                RunResult("a", "train", category="REGRESSION")]
+        self.assertEqual(merged_category(runs), "REGRESSION")
+
     def test_is_better(self):
         def s(train, held, cost=1.0, turns=10):
             return {"train": {"pass_rate": train, "cost": cost, "turns": turns},
@@ -109,6 +122,7 @@ class EndToEnd(unittest.TestCase):
         quiet(cli.main, ["--repo", str(self.repo), "init"])
         cfg = json.loads(self.paths.config.read_text())
         cfg.update(test_cmd=f"{sys.executable} -m unittest {{tests}}",
+                   regression_cmd=f"{sys.executable} -m unittest discover -s tests -t .",
                    agent_cmd=[sys.executable, str(ROOT / "tests" / "fake_agent.py"), "{prompt_file}"],
                    baseline_runs=1, heldout_fraction=0.0)
         self.paths.config.write_text(json.dumps(cfg))
@@ -128,6 +142,7 @@ class EndToEnd(unittest.TestCase):
         for t in tasks:
             self.assertEqual(t["hidden_tests"], [f"tests/{'test_' + t['issue'].split()[1]}.py"])
             self.assertNotIn("Signed-off-by", t["issue"])
+            self.assertTrue(t["regression_check"])  # the reference fix keeps the suite green
         self.assertEqual({t["split"] for t in tasks}, {"train", "heldout"})
         self.assertTrue(self.paths.manifest.exists())
         # .seed/ is invisible to git in the repo under test (and so in task checkouts).
@@ -136,19 +151,22 @@ class EndToEnd(unittest.TestCase):
 
     def test_full_loop_ratchet_and_anti_cheat(self):
         tasks = self.mine()
-        self.plan.write_text("good,bad,big,good,good,good,good,good")
+        self.plan.write_text("good,bad,good,bad,big,good,good,good,good")
         cfg = json.loads(self.paths.config.read_text())
 
         base = quiet(loop.run_baseline, self.repo, self.paths, cfg)
         self.assertEqual(base["all"]["passed"], 1)  # only the "easy" bug
         self.assertEqual(base["all"]["cheated"], 1)  # the cheat task scored 0
+        # "breaker" passes its hidden test but breaks the suite: the invariant fails it.
+        self.assertEqual(base["all"]["categories"],
+                         {"PASS": 1, "CHEATED": 1, "REGRESSION": 1, "NO_CHANGE": len(BUGS) - 3})
 
         v0 = quiet(loop.run_build, self.repo, self.paths, cfg)
         self.assertEqual(v0["all"]["passed"], 1)
         self.assertTrue((self.paths.harness / "CLAUDE.md").exists())
         self.assertTrue((self.paths.harness / "facts.md").exists())
 
-        best = quiet(loop.run_evolve, self.repo, self.paths, cfg, 8)
+        best = quiet(loop.run_evolve, self.repo, self.paths, cfg, 9)
         log = loop.read_log(self.paths)
         cands = [e for e in log if e["kind"] == "candidate"]
         reasons = [e["reason"] for e in cands]
@@ -156,6 +174,10 @@ class EndToEnd(unittest.TestCase):
         self.assertIn("train pass rate up", reasons)
         self.assertTrue(any("held-out dropped" in r or "down" in r for r in reasons))  # sabotage reverted
         self.assertTrue(any(r.startswith("change too big") for r in reasons))
+        self.assertIn("repeats a rejected change", reasons)  # retry rule: no second scoring
+        self.assertEqual(reasons.count("repeats a rejected change"), 1)
+        failures = (self.paths.root / "evolver_input" / "failures.md").read_text()
+        self.assertIn("## Why they failed", failures)
         self.assertNotIn("sabotage", (self.paths.harness / "CLAUDE.md").read_text())
         self.assertNotIn("filler", (self.paths.harness / "CLAUDE.md").read_text())
         # All train tasks except cheat can be learned; held-out was never shown to the Evolver.

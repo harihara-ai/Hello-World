@@ -10,6 +10,10 @@ DEFAULTS = {
     # Optional shell command run in each fresh worktree before the agent starts.
     "setup_cmd": None,
     "test_timeout_s": 600,
+    # Invariant: shell command for the repo's existing suite. A fix must keep it green wherever
+    # the reference fix did. null disables the regression check.
+    "regression_cmd": None,
+    "regression_timeout_s": 900,
     "setup_timeout_s": 600,
     # Hard caps (spec: "Always").
     "max_turns": 30,
@@ -108,6 +112,18 @@ def load_state(paths):
 
 def save_state(paths, state):
     paths.state.write_text(json.dumps(state, indent=2))
+
+
+def guess_regression_cmd(repo):
+    repo = Path(repo)
+    for marker, cmd in (("pyproject.toml", "python -m pytest -q"), ("setup.py", "python -m pytest -q"),
+                        ("package.json", "npm test --silent"), ("pom.xml", "mvn -q test"),
+                        ("build.gradle", "./gradlew test"), ("build.gradle.kts", "./gradlew test"),
+                        ("go.mod", "go test ./..."), ("Cargo.toml", "cargo test"),
+                        ("composer.json", "vendor/bin/phpunit")):
+        if (repo / marker).exists():
+            return cmd
+    return None
 
 
 def guess_test_cmd(repo):

@@ -16,6 +16,19 @@ from .mine import is_test_path
 PROMPTS = Path(__file__).parent / "prompts"
 HARNESS_EXCLUDE = {".git", "facts.md"}
 
+# Why a run did not pass. Judge-side categories say nothing about the harness
+# and are left out of the score instead of counting as failures.
+PASS = "PASS"
+CHEATED = "CHEATED"            # touched a test file: scores zero
+NO_CHANGE = "NO_CHANGE"        # agent changed no source file
+TIMEOUT = "TIMEOUT"            # agent hit the wall-clock cap
+WRONG_FIX = "WRONG_FIX"        # hidden tests fail
+REGRESSION = "REGRESSION"      # hidden tests pass, but the regression suite fails
+NOT_RUN = "NOT_RUN"            # generation budget ran out first
+SETUP_FAILURE = "SETUP_FAILURE"  # environment: setup_cmd failed before the agent ran
+JUDGE_ERROR = "JUDGE_ERROR"    # the judge itself crashed
+JUDGE_SIDE = {SETUP_FAILURE, JUDGE_ERROR}
+
 
 class IntegrityError(RuntimeError):
     pass
@@ -31,6 +44,7 @@ class RunResult:
     turns: int = 0
     duration_s: float = 0.0
     error: str = ""
+    category: str = ""
     touched_tests: list = field(default_factory=list)
 
 
@@ -64,6 +78,16 @@ def run_hidden_tests(paths, task, worktree, cfg, out_dir):
     return code == 0
 
 
+def regression_enabled(cfg, task):
+    return bool(cfg.get("regression_cmd")) and task.get("regression_check", True)
+
+
+def run_regression(worktree, cfg, out_dir):
+    """Invariant: whatever the reference fix kept passing, the agent's fix must keep passing."""
+    code = _sh(cfg["regression_cmd"], worktree, cfg["regression_timeout_s"], Path(out_dir) / "regression.log")
+    return code == 0
+
+
 def validate_task(repo, paths, cfg, task, scratch):
     """A usable task fails on the parent and passes on the fix commit."""
     for rev, want_pass in ((task["parent"], False), (task["sha"], True)):
@@ -75,11 +99,16 @@ def validate_task(repo, paths, cfg, task, scratch):
             if cfg.get("setup_cmd") and _sh(cfg["setup_cmd"], wt, cfg["setup_timeout_s"], out / "setup.log"):
                 return False, f"setup failed at {rev[:7]}"
             passed = run_hidden_tests(paths, task, wt, cfg, out)
+            if want_pass and passed and cfg.get("regression_cmd"):
+                # The reference fix must pass the suite, or the suite can't judge the agent's fix.
+                task["regression_check"] = run_regression(wt, cfg, out)
         finally:
             gitutil.worktree_remove(repo, wt)
         if passed != want_pass:
             return False, ("hidden tests already pass before the fix" if passed
                            else "hidden tests fail even with the fix")
+    if cfg.get("regression_cmd") and not task.get("regression_check"):
+        return True, "regression suite fails on the reference fix; regression check off for this task"
     return True, ""
 
 
@@ -92,12 +121,13 @@ def run_task(repo, paths, cfg, task, harness_dir, out_dir):
     wt = scratch / "repo"
     try:
         gitutil.worktree_add(repo, wt, task["parent"])
+        # Setup runs before the harness is installed, so a setup failure is never the harness's fault.
+        if cfg.get("setup_cmd") and _sh(cfg["setup_cmd"], wt, cfg["setup_timeout_s"], out_dir / "setup.log"):
+            res.error, res.category = "setup failed", SETUP_FAILURE
+            return res
         installed = set()
         if harness_dir:
             installed = set(gitutil.copy_tree(harness_dir, wt, exclude=HARNESS_EXCLUDE))
-        if cfg.get("setup_cmd") and _sh(cfg["setup_cmd"], wt, cfg["setup_timeout_s"], out_dir / "setup.log"):
-            res.error = "setup failed"
-            return res
         prompt = (PROMPTS / "task.md").read_text().replace("{issue}", task["issue"])
         agent = run_agent(prompt, wt, out_dir, cfg, cfg["max_turns"], cfg["max_cost_per_task_usd"],
                           deny=[paths.root])
@@ -108,12 +138,21 @@ def run_task(repo, paths, cfg, task, harness_dir, out_dir):
         (out_dir / "diff.patch").write_text(gitutil.diff_patch(wt))
         res.touched_tests = [p for p in changed if is_test_path(p)]
         if res.touched_tests:
-            res.cheated = True  # anti-cheat: any test file change scores 0
+            res.cheated, res.category = True, CHEATED  # anti-cheat: any test file change scores 0
             return res
-        res.passed = run_hidden_tests(paths, task, wt, cfg, out_dir)
+        if not changed:
+            res.category = TIMEOUT if agent.timed_out else NO_CHANGE
+            return res
+        if not run_hidden_tests(paths, task, wt, cfg, out_dir):
+            res.category = TIMEOUT if agent.timed_out else WRONG_FIX
+            return res
+        if regression_enabled(cfg, task) and not run_regression(wt, cfg, out_dir):
+            res.category = REGRESSION
+            return res
+        res.passed, res.category = True, PASS
         return res
-    except Exception as e:  # a broken run is a failed run, not a crashed judge
-        res.error = f"{type(e).__name__}: {e}"
+    except Exception as e:  # a crashed judge says nothing about the harness
+        res.error, res.category = f"{type(e).__name__}: {e}", JUDGE_ERROR
         return res
     finally:
         (out_dir / "result.json").write_text(json.dumps(asdict(res), indent=2))
@@ -122,17 +161,33 @@ def run_task(repo, paths, cfg, task, harness_dir, out_dir):
 
 
 def summarize(results):
-    n = len(results)
-    passed = sum(r.passed for r in results)
+    invalid = [r for r in results if r.category in JUDGE_SIDE]
+    scored = [r for r in results if r.category not in JUDGE_SIDE]
+    n = len(scored)
+    passed = sum(r.passed for r in scored)
+    categories = {}
+    for r in results:
+        categories[r.category or "UNKNOWN"] = categories.get(r.category or "UNKNOWN", 0) + 1
     return {
         "pass_rate": round(passed / n, 4) if n else 0.0,
         "passed": passed,
         "total": n,
+        "invalid": len(invalid),
         "cost": round(sum(r.cost for r in results), 4),
         "turns": sum(r.turns for r in results),
-        "cheated": sum(r.cheated for r in results),
-        "failed_tasks": sorted(r.task_id for r in results if not r.passed),
+        "cheated": sum(r.cheated for r in scored),
+        "categories": dict(sorted(categories.items())),
+        "failed_tasks": sorted(r.task_id for r in scored if not r.passed),
     }
+
+
+def merged_category(runs):
+    """Majority outcome across repeated runs of one task."""
+    passes = sum(r.passed for r in runs)
+    if passes * 2 > len(runs):
+        return PASS
+    fails = [r.category for r in runs if not r.passed]
+    return max(sorted(set(fails)), key=fails.count)
 
 
 def check_integrity(paths):
@@ -161,7 +216,8 @@ def judge(repo, paths, cfg, tasks, harness_dir, label, runs=1, budget=None):
         with lock:
             over = spent["usd"] >= budget
         if over:
-            return RunResult(task_id=task["id"], split=task["split"], error="generation budget exhausted")
+            return RunResult(task_id=task["id"], split=task["split"], error="generation budget exhausted",
+                             category=NOT_RUN)
         r = run_task(repo, paths, cfg, task, snapshot, paths.runs / label / task["id"] / f"run{i}")
         with lock:
             spent["usd"] += r.cost
@@ -186,7 +242,9 @@ def judge(repo, paths, cfg, tasks, harness_dir, label, runs=1, budget=None):
         m = RunResult(task_id=task_id, split=rs[0].split, passed=votes * 2 > len(rs),
                       cheated=any(r.cheated for r in rs), cost=sum(r.cost for r in rs) / len(rs),
                       turns=round(sum(r.turns for r in rs) / len(rs)),
-                      error="; ".join(sorted({r.error for r in rs if r.error})))
+                      error="; ".join(sorted({r.error for r in rs if r.error})),
+                      category=merged_category(rs),
+                      touched_tests=sorted({p for r in rs for p in r.touched_tests}))
         merged.append(m)
     summary = {split: summarize([m for m in merged if m.split == split]) for split in ("train", "heldout")}
     summary["all"] = summarize(merged)

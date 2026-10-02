@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 
 from . import gitutil, loop
-from .config import DEFAULTS, SeedPaths, guess_test_cmd, load_config
+from .config import DEFAULTS, SeedPaths, guess_regression_cmd, guess_test_cmd, load_config
 from .judge import IntegrityError, validate_task
 from .mine import build_tasks, candidates
 
@@ -22,6 +22,7 @@ def cmd_init(args, paths):
     if not paths.config.exists():
         cfg = dict(DEFAULTS)
         cfg["test_cmd"] = guess_test_cmd(paths.repo)
+        cfg["regression_cmd"] = guess_regression_cmd(paths.repo)
         paths.config.write_text(json.dumps(cfg, indent=2) + "\n")
     loop.harness_init(paths)
     # Keep .seed/ out of the repo under test, so task checkouts never contain it.
@@ -34,7 +35,9 @@ def cmd_init(args, paths):
         exclude.write_text(text + ("" if text.endswith("\n") or not text else "\n") + ".seed/\n")
     cfg = load_config(paths)
     print(f"Initialized {paths.root}")
-    print(f"  test_cmd: {cfg['test_cmd']!r}  (edit {paths.config} before `seed mine`)")
+    print(f"  test_cmd: {cfg['test_cmd']!r}")
+    print(f"  regression_cmd: {cfg['regression_cmd']!r}")
+    print(f"  (review both in {paths.config} before `seed mine`)")
 
 
 def cmd_survey(args, paths):
