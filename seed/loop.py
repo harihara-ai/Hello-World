@@ -1,0 +1,335 @@
+"""Roles (Observer, Builder, Evolver, Reflector), the ratchet, and the fail-fast gates."""
+import json
+import shutil
+import tempfile
+import time
+from contextlib import contextmanager
+from pathlib import Path
+
+from . import gitutil
+from .agent import run_agent
+from .config import load_state, save_state
+from .judge import RunResult, check_integrity, judge, summarize
+from .mine import load_tasks
+
+PROMPTS = Path(__file__).parent / "prompts"
+
+
+class GateFailed(RuntimeError):
+    pass
+
+
+def log_event(paths, **entry):
+    entry = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S"), **entry}
+    with paths.log.open("a") as f:
+        f.write(json.dumps(entry) + "\n")
+    return entry
+
+
+def read_log(paths):
+    if not paths.log.exists():
+        return []
+    return [json.loads(l) for l in paths.log.read_text().splitlines() if l.strip()]
+
+
+# ---- harness versioning (a private git repo inside .seed/harness) ----
+
+def harness_git(paths, *args, check=True):
+    return gitutil.git(paths.harness, *args, check=check)
+
+
+def harness_init(paths):
+    paths.harness.mkdir(parents=True, exist_ok=True)
+    if not (paths.harness / ".git").exists():
+        harness_git(paths, "init", "-q")
+        harness_git(paths, "config", "user.email", "seed@localhost")
+        harness_git(paths, "config", "user.name", "seed")
+        harness_git(paths, "commit", "-q", "--allow-empty", "-m", "empty harness")
+
+
+def harness_commit(paths, message):
+    harness_git(paths, "add", "-A")
+    harness_git(paths, "commit", "-q", "--allow-empty", "-m", message)
+    return harness_git(paths, "rev-parse", "HEAD").strip()
+
+
+def harness_revert(paths):
+    harness_git(paths, "reset", "-q", "--hard", "HEAD~1")
+    harness_git(paths, "clean", "-qfdx")
+
+
+def change_size(paths):
+    """Changed lines in the uncommitted harness edit (facts.md excluded)."""
+    harness_git(paths, "add", "-A")
+    out = harness_git(paths, "diff", "--cached", "--numstat")
+    total = 0
+    for line in out.splitlines():
+        added, removed, name = line.split("\t", 2)
+        if name == "facts.md":
+            continue
+        total += (int(added) if added.isdigit() else 50) + (int(removed) if removed.isdigit() else 50)
+    return total
+
+
+# ---- roles ----
+
+@contextmanager
+def repo_checkout(repo):
+    """Roles look at a throwaway checkout of HEAD, never the user's working tree."""
+    scratch = Path(tempfile.mkdtemp(prefix="seed-role-"))
+    wt = scratch / "repo"
+    gitutil.worktree_add(repo, wt, "HEAD")
+    try:
+        yield wt
+    finally:
+        gitutil.worktree_remove(repo, wt)
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
+def run_role(repo, paths, cfg, role, extra_dirs=(), **fmt):
+    """Run a role agent. Verifies by hash that it left the frozen files alone."""
+    before = check_integrity(paths)
+    prompt = (PROMPTS / f"{role}.md").read_text()
+    for key, value in {"harness": paths.harness, **fmt}.items():
+        prompt = prompt.replace("{" + key + "}", str(value))
+    out_dir = paths.runs / "roles" / f"{role}-{time.strftime('%Y%m%d-%H%M%S')}"
+    with repo_checkout(repo) as wt:
+        res = run_agent(prompt, wt, out_dir, cfg, cfg["role_max_turns"], cfg["role_max_cost_usd"],
+                        deny=paths.frozen, add_dirs=[paths.harness, *extra_dirs])
+    if gitutil.tree_hash(paths.frozen) != before:
+        raise GateFailed(f"{role} modified the frozen judge or SEED.md; aborting")
+    spend(paths, res.cost)
+    return res
+
+
+def spend(paths, usd):
+    state = load_state(paths)
+    state["spent_usd"] = round(state.get("spent_usd", 0.0) + usd, 4)
+    save_state(paths, state)
+    return state["spent_usd"]
+
+
+# ---- scoring helpers ----
+
+def score(repo, paths, cfg, harness, label, runs=None):
+    state = load_state(paths)
+    tasks = load_tasks(paths, exclude=state.get("excluded_tasks", []))
+    summary, merged = judge(repo, paths, cfg, tasks, harness, label,
+                            runs=runs or cfg["runs_per_task"])
+    spend(paths, summary["spent_usd"])
+    return summary, merged
+
+
+def is_better(cand, best):
+    """Keep only if train improves and held-out does not drop. Tie-break on cost, then turns."""
+    if cand["heldout"]["pass_rate"] < best["heldout"]["pass_rate"]:
+        return False, "held-out dropped"
+    if cand["train"]["pass_rate"] > best["train"]["pass_rate"]:
+        return True, "train pass rate up"
+    if cand["train"]["pass_rate"] < best["train"]["pass_rate"]:
+        return False, "train pass rate down"
+    if cand["train"]["cost"] < 0.9 * best["train"]["cost"]:
+        return True, "same pass rate, >=10% cheaper"
+    if cand["train"]["turns"] < 0.9 * best["train"]["turns"]:
+        return True, "same pass rate, >=10% fewer turns"
+    return False, "no measurable gain"
+
+
+def best_summary(paths):
+    """Score of the current harness HEAD (last kept v0/candidate), or None."""
+    for e in reversed(read_log(paths)):
+        if e["kind"] in ("v0", "candidate") and e.get("kept"):
+            return e["score"]
+    return None
+
+
+def baseline_summary(paths):
+    for e in reversed(read_log(paths)):
+        if e["kind"] == "baseline":
+            return e["score"]
+    return None
+
+
+# ---- phases ----
+
+def run_baseline(repo, paths, cfg, out=print):
+    out("Baseline: plain Claude Code, no harness")
+    summary, merged = score(repo, paths, cfg, None, "baseline", runs=cfg["baseline_runs"])
+    if summary["flaky_tasks"]:
+        # Gate 2: noisy tasks are dropped from all later scoring.
+        state = load_state(paths)
+        state["excluded_tasks"] = sorted(set(state.get("excluded_tasks", [])) | set(summary["flaky_tasks"]))
+        save_state(paths, state)
+        out(f"  Gate 2: dropping noisy tasks {summary['flaky_tasks']}")
+        kept = [m for m in merged if m.task_id not in summary["flaky_tasks"]]
+        summary = {**summary, **{sp: summarize([m for m in kept if m.split == sp]) for sp in ("train", "heldout")},
+                   "all": summarize(kept)}
+    log_event(paths, kind="baseline", gen=0, score=summary)
+    out(_fmt(summary))
+    rate = summary["all"]["pass_rate"]
+    if rate in (0.0, 1.0):
+        raise GateFailed(f"Gate 0: baseline pass rate is {rate:.0%}; the tasks are bad. Pick different tasks.")
+    return summary
+
+
+def run_build(repo, paths, cfg, out=print):
+    base = baseline_summary(paths)
+    if base is None:
+        raise GateFailed("run `seed baseline` first")
+    harness_init(paths)
+    out("Observer: writing facts.md")
+    run_role(repo, paths, cfg, "observer")
+    out("Builder: writing harness v0")
+    run_role(repo, paths, cfg, "builder")
+    sha = harness_commit(paths, "v0")
+    out("Judge: scoring v0")
+    summary, _ = score(repo, paths, cfg, paths.harness, "v0")
+    log_event(paths, kind="v0", gen=0, harness=sha, score=summary, kept=True)
+    out(_fmt(summary))
+    if summary["all"]["pass_rate"] < base["all"]["pass_rate"]:
+        raise GateFailed("Gate 1: v0 scores below baseline. Fix the Observer/Builder prompts (the seed), not the harness.")
+    return summary
+
+
+def write_digest(paths, digest, merged, label):
+    """Inputs for the Evolver: train failures only (held-out stays unseen) and the history."""
+    digest.mkdir(parents=True, exist_ok=True)
+    parts = ["# Failed training tasks\n"]
+    tasks = {t["id"]: t for t in load_tasks(paths, "train")}
+    for r in merged:
+        if r.split != "train" or r.passed:
+            continue
+        run_dir = paths.runs / label / r.task_id / "run0"
+        parts.append(f"## Task {r.task_id}\n")
+        parts.append(f"### Bug report\n{tasks[r.task_id]['issue']}\n")
+        if r.cheated:
+            parts.append(f"### Scored zero: agent modified test files {r.touched_tests}\n")
+        if r.error:
+            parts.append(f"### Error\n{r.error}\n")
+        for name, title, limit in (("agent.stdout", "Agent final output", 3000),
+                                   ("diff.patch", "Agent diff", 4000),
+                                   ("test.log", "Hidden test output", 4000)):
+            f = run_dir / name
+            if f.exists():
+                text = f.read_text()
+                parts.append(f"### {title}\n```\n{text[-limit:]}\n```\n")
+    (digest / "failures.md").write_text("\n".join(parts))
+    hist = ["# Generation history\n"]
+    for e in read_log(paths):
+        if e["kind"] in ("v0", "candidate"):
+            s = e.get("score") or {}
+            hist.append(f"- gen {e['gen']} {e['kind']}: {e.get('change', 'initial harness')} -> "
+                        f"train {s.get('train', {}).get('pass_rate', '-')}, "
+                        f"{'KEPT' if e.get('kept') else 'REVERTED'} ({e.get('reason', '')})")
+    (digest / "history.md").write_text("\n".join(hist) + "\n")
+
+
+def run_evolve(repo, paths, cfg, generations=None, out=print):
+    generations = generations or cfg["max_generations"]
+    best = best_summary(paths)
+    if best is None:
+        raise GateFailed("run `seed build` first")
+    last_label = _last_kept_label(paths)
+    start_gen = max([e.get("gen", 0) for e in read_log(paths)] + [0]) + 1
+    no_gain = 0
+    for gen in range(start_gen, start_gen + generations):
+        if load_state(paths)["spent_usd"] >= cfg["max_total_cost_usd"]:
+            out("Stop: total budget reached")
+            break
+        if no_gain >= cfg["patience"]:
+            out(f"Stop: {no_gain} generations with no gain")
+            break
+        out(f"Generation {gen}: Evolver")
+        merged = _load_merged(paths, last_label)
+        digest = paths.root / "evolver_input"
+        shutil.rmtree(digest, ignore_errors=True)
+        write_digest(paths, digest, merged, last_label)
+        res = run_role(repo, paths, cfg, "evolver", extra_dirs=[digest], digest=digest,
+                       max_lines=cfg["max_change_lines"])
+        change = _change_line(res.result)
+        size = change_size(paths)
+        if size == 0:
+            log_event(paths, kind="candidate", gen=gen, change=change, kept=False, reason="no change made")
+            no_gain += 1
+            continue
+        sha = harness_commit(paths, f"gen {gen}: {change}")
+        if size > cfg["max_change_lines"]:
+            harness_revert(paths)
+            log_event(paths, kind="candidate", gen=gen, change=change, harness=sha, kept=False,
+                      reason=f"change too big ({size} lines > {cfg['max_change_lines']})")
+            out(f"  reverted: change too big ({size} lines)")
+            no_gain += 1
+            continue
+        label = f"gen{gen}"
+        summary, _ = score(repo, paths, cfg, paths.harness, label)
+        keep, reason = is_better(summary, best)
+        if summary["budget_exhausted"]:
+            keep, reason = False, "generation budget exhausted before all tasks ran"
+        if keep:
+            best, last_label, no_gain = summary, label, 0
+        else:
+            harness_revert(paths)
+            no_gain += 1
+        log_event(paths, kind="candidate", gen=gen, change=change, harness=sha, lines=size,
+                  score=summary, kept=keep, reason=reason)
+        out(f"  {'KEPT' if keep else 'REVERTED'} ({reason}): {change}\n{_fmt(summary)}")
+    return best
+
+
+def _change_line(text):
+    for line in str(text).splitlines():
+        if line.strip().startswith("CHANGE:"):
+            return line.strip()[len("CHANGE:"):].strip()[:300]
+    return str(text).strip().splitlines()[-1][:300] if str(text).strip() else "(no description)"
+
+
+def _last_kept_label(paths):
+    for e in reversed(read_log(paths)):
+        if e["kind"] == "v0" and e.get("kept"):
+            return "v0"
+        if e["kind"] == "candidate" and e.get("kept"):
+            return f"gen{e['gen']}"
+    return "v0"
+
+
+def _load_merged(paths, label):
+    merged = []
+    for f in sorted((paths.runs / label).glob("*/run0/result.json")):
+        merged.append(RunResult(**json.loads(f.read_text())))
+    return merged
+
+
+def run_reflect(repo, paths, cfg, out=print):
+    out("Reflector: proposing seed-prompt edits")
+    run_role(repo, paths, cfg, "reflector", extra_dirs=[PROMPTS],
+             log=paths.log, prompts=PROMPTS, out=paths.proposals)
+    out(f"  wrote {paths.proposals} (for human review; nothing is applied)")
+
+
+def report(paths):
+    log = read_log(paths)
+    base = baseline_summary(paths)
+    best = best_summary(paths)
+    lines = []
+    if base:
+        lines.append(f"baseline: {_fmt(base)}")
+    if best:
+        lines.append(f"current : {_fmt(best)}")
+    if base and best:
+        verdict = best["heldout"]["pass_rate"] > base["heldout"]["pass_rate"]
+        lines.append(f"beats baseline on held-out: {'YES' if verdict else 'no'}")
+    reverted = [e for e in log if e["kind"] == "candidate" and not e.get("kept")]
+    kept = [e for e in log if e["kind"] == "candidate" and e.get("kept")]
+    lines.append(f"generations: {len(kept)} kept, {len(reverted)} reverted by the ratchet")
+    for e in log:
+        if e["kind"] == "candidate":
+            lines.append(f"  gen {e['gen']}: {'KEPT ' if e.get('kept') else 'REVERT'} "
+                         f"{e.get('reason', '')} | {e.get('change', '')}")
+    return "\n".join(lines)
+
+
+def _fmt(s):
+    return (f"train {s['train']['passed']}/{s['train']['total']}  "
+            f"held-out {s['heldout']['passed']}/{s['heldout']['total']}  "
+            f"cost ${s['all']['cost']:.2f}  turns {s['all']['turns']}"
+            + (f"  cheated {s['all']['cheated']}" if s['all']['cheated'] else ""))

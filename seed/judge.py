@@ -1,0 +1,196 @@
+"""The Judge: a plain script. Runs a harness on mined tasks and scores it against hidden tests."""
+import json
+import shlex
+import shutil
+import subprocess
+import tempfile
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+
+from . import gitutil
+from .agent import run_agent
+from .mine import is_test_path
+
+PROMPTS = Path(__file__).parent / "prompts"
+HARNESS_EXCLUDE = {".git", "facts.md"}
+
+
+class IntegrityError(RuntimeError):
+    pass
+
+
+@dataclass
+class RunResult:
+    task_id: str
+    split: str
+    passed: bool = False
+    cheated: bool = False
+    cost: float = 0.0
+    turns: int = 0
+    duration_s: float = 0.0
+    error: str = ""
+    touched_tests: list = field(default_factory=list)
+
+
+def test_command(cfg, task):
+    tests = " ".join(shlex.quote(t) for t in task["run_tests"])
+    names = ",".join(Path(t).stem for t in task["run_tests"])
+    return cfg["test_cmd"].replace("{tests}", tests).replace("{test_names}", names)
+
+
+def _sh(cmd, cwd, timeout, log_file):
+    try:
+        proc = subprocess.run(cmd, shell=True, cwd=cwd, capture_output=True, text=True,
+                              timeout=timeout, stdin=subprocess.DEVNULL)
+        Path(log_file).write_text(f"$ {cmd}\n[exit {proc.returncode}]\n{proc.stdout}\n{proc.stderr}")
+        return proc.returncode
+    except subprocess.TimeoutExpired:
+        Path(log_file).write_text(f"$ {cmd}\n[timeout after {timeout}s]\n")
+        return -1
+
+
+def restore_hidden_tests(paths, task, worktree):
+    for rel in task["hidden_tests"]:
+        target = Path(worktree) / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(paths.hidden / task["id"] / rel, target)
+
+
+def run_hidden_tests(paths, task, worktree, cfg, out_dir):
+    restore_hidden_tests(paths, task, worktree)
+    code = _sh(test_command(cfg, task), worktree, cfg["test_timeout_s"], Path(out_dir) / "test.log")
+    return code == 0
+
+
+def validate_task(repo, paths, cfg, task, scratch):
+    """A usable task fails on the parent and passes on the fix commit."""
+    for rev, want_pass in ((task["parent"], False), (task["sha"], True)):
+        wt = Path(scratch) / f"validate-{task['id']}-{rev[:7]}"
+        out = Path(scratch) / f"validate-{task['id']}-{rev[:7]}-out"
+        out.mkdir(parents=True, exist_ok=True)
+        gitutil.worktree_add(repo, wt, rev)
+        try:
+            if cfg.get("setup_cmd") and _sh(cfg["setup_cmd"], wt, cfg["setup_timeout_s"], out / "setup.log"):
+                return False, f"setup failed at {rev[:7]}"
+            passed = run_hidden_tests(paths, task, wt, cfg, out)
+        finally:
+            gitutil.worktree_remove(repo, wt)
+        if passed != want_pass:
+            return False, ("hidden tests already pass before the fix" if passed
+                           else "hidden tests fail even with the fix")
+    return True, ""
+
+
+def run_task(repo, paths, cfg, task, harness_dir, out_dir):
+    """One attempt: fresh worktree at the parent, install harness, agent, anti-cheat, hidden tests."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    res = RunResult(task_id=task["id"], split=task["split"])
+    scratch = Path(tempfile.mkdtemp(prefix=f"seed-{task['id']}-"))
+    wt = scratch / "repo"
+    try:
+        gitutil.worktree_add(repo, wt, task["parent"])
+        installed = set()
+        if harness_dir:
+            installed = set(gitutil.copy_tree(harness_dir, wt, exclude=HARNESS_EXCLUDE))
+        if cfg.get("setup_cmd") and _sh(cfg["setup_cmd"], wt, cfg["setup_timeout_s"], out_dir / "setup.log"):
+            res.error = "setup failed"
+            return res
+        prompt = (PROMPTS / "task.md").read_text().replace("{issue}", task["issue"])
+        agent = run_agent(prompt, wt, out_dir, cfg, cfg["max_turns"], cfg["max_cost_per_task_usd"],
+                          deny=[paths.root])
+        res.cost, res.turns, res.duration_s = agent.cost, agent.turns, agent.duration_s
+        if agent.timed_out:
+            res.error = "agent timed out"
+        changed = [p for p in gitutil.changed_files(wt) if p not in installed]
+        (out_dir / "diff.patch").write_text(gitutil.diff_patch(wt))
+        res.touched_tests = [p for p in changed if is_test_path(p)]
+        if res.touched_tests:
+            res.cheated = True  # anti-cheat: any test file change scores 0
+            return res
+        res.passed = run_hidden_tests(paths, task, wt, cfg, out_dir)
+        return res
+    except Exception as e:  # a broken run is a failed run, not a crashed judge
+        res.error = f"{type(e).__name__}: {e}"
+        return res
+    finally:
+        (out_dir / "result.json").write_text(json.dumps(asdict(res), indent=2))
+        gitutil.worktree_remove(repo, wt)
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
+def summarize(results):
+    n = len(results)
+    passed = sum(r.passed for r in results)
+    return {
+        "pass_rate": round(passed / n, 4) if n else 0.0,
+        "passed": passed,
+        "total": n,
+        "cost": round(sum(r.cost for r in results), 4),
+        "turns": sum(r.turns for r in results),
+        "cheated": sum(r.cheated for r in results),
+        "failed_tasks": sorted(r.task_id for r in results if not r.passed),
+    }
+
+
+def check_integrity(paths):
+    expected = paths.manifest.read_text().strip() if paths.manifest.exists() else None
+    actual = gitutil.tree_hash(paths.frozen)
+    if expected and expected != actual:
+        raise IntegrityError("frozen judge/SEED.md changed since `seed mine` froze it; refusing to score")
+    return actual
+
+
+def judge(repo, paths, cfg, tasks, harness_dir, label, runs=1, budget=None):
+    """Score a harness (None = plain Claude Code) on `tasks`. Returns (summaries, per-task detail)."""
+    check_integrity(paths)
+    budget = cfg["max_cost_per_generation_usd"] if budget is None else budget
+    spent = {"usd": 0.0}
+    lock = threading.Lock()
+    jobs = [(t, i) for i in range(runs) for t in tasks]
+    snapshot = None
+    if harness_dir:
+        # Freeze the harness for this generation so an in-flight run can't be affected by edits.
+        snapshot = Path(tempfile.mkdtemp(prefix="seed-harness-"))
+        gitutil.copy_tree(harness_dir, snapshot, exclude={".git"})
+
+    def one(job):
+        task, i = job
+        with lock:
+            over = spent["usd"] >= budget
+        if over:
+            return RunResult(task_id=task["id"], split=task["split"], error="generation budget exhausted")
+        r = run_task(repo, paths, cfg, task, snapshot, paths.runs / label / task["id"] / f"run{i}")
+        with lock:
+            spent["usd"] += r.cost
+        return r
+
+    try:
+        with ThreadPoolExecutor(max_workers=max(1, cfg["workers"])) as pool:
+            results = list(pool.map(one, jobs))
+    finally:
+        if snapshot:
+            shutil.rmtree(snapshot, ignore_errors=True)
+    check_integrity(paths)
+
+    by_task = {}
+    for r in results:
+        by_task.setdefault(r.task_id, []).append(r)
+    merged, flaky = [], []
+    for task_id, rs in by_task.items():
+        votes = sum(r.passed for r in rs)
+        if 0 < votes < len(rs):
+            flaky.append(task_id)
+        m = RunResult(task_id=task_id, split=rs[0].split, passed=votes * 2 > len(rs),
+                      cheated=any(r.cheated for r in rs), cost=sum(r.cost for r in rs) / len(rs),
+                      turns=round(sum(r.turns for r in rs) / len(rs)),
+                      error="; ".join(sorted({r.error for r in rs if r.error})))
+        merged.append(m)
+    summary = {split: summarize([m for m in merged if m.split == split]) for split in ("train", "heldout")}
+    summary["all"] = summarize(merged)
+    summary["flaky_tasks"] = sorted(flaky)
+    summary["spent_usd"] = round(spent["usd"], 4)
+    summary["budget_exhausted"] = any(r.error == "generation budget exhausted" for r in results)
+    return summary, merged
