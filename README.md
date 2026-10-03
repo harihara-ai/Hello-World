@@ -64,6 +64,11 @@ Notes on choices the spec leaves open:
 - **Test command.** `test_cmd` in `judge/config.json` is a human decision and is frozen with the judge.
   `{tests}` expands to the hidden test paths and `{test_names}` to their basenames
   (for JUnit-style `-Dtest=`). `init` guesses a value from the build files.
+- **Fair tasks only.** With `bugfix_only` (the default), `mine` drops feature commits and bug reports
+  shorter than `min_issue_words` (default 4), before spending time on validation. A commit counts as a
+  feature when its subject starts with add/implement/introduce/new and doesn't also say fix/bug, or when
+  the fix defines a new top-level function or class that didn't exist at the parent. On more-itertools,
+  this keeps 56 of 88 candidates.
 - **Regression check.** A run passes only if the hidden tests pass *and* `regression_cmd`
   (the repo's existing suite) stays green. During `mine`, the suite is run on each reference fix;
   if it fails there too (broken or environment-dependent tests), the check is turned off for that task

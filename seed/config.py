@@ -38,6 +38,9 @@ DEFAULTS = {
     # Every Nth generation, try deleting one harness piece instead of adding one (0 = never).
     "ablate_every": 3,
     "max_src_files_per_task": 5,
+    # Keep only fair bug-fix tasks: drop feature commits and bug reports under min_issue_words words.
+    "bugfix_only": True,
+    "min_issue_words": 4,
     "max_tasks": 80,
     "workers": 1,
     "model": None,

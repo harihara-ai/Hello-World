@@ -23,6 +23,27 @@ NON_SOURCE_RE = re.compile(
     r"(^|/)(docs?|\.github)/|\.(md|rst|txt|adoc)$|(^|/)(CHANGES|CHANGELOG|HISTORY|NEWS|AUTHORS)[^/]*$",
     re.I)
 TRAILER_RE = re.compile(r"^[A-Za-z][A-Za-z-]*: .+$")
+FEATURE_MSG_RE = re.compile(r"^\W*([\w.]+:\s*)?(issue\W*\d*\W*)?(add(s|ed)?|implement(s|ed)?|introduce[sd]?|new)\b",
+                            re.I)
+BUGFIX_WORD_RE = re.compile(r"\b(fix(e[sd])?|bug(fix)?)\b", re.I)
+# A new top-level definition (Python, JS/TS, Go, Rust, Java-ish). Methods are indented, so not matched.
+NEW_DEF_RE = re.compile(r"^\+(?:async\s+)?(?:def|class|function|func|fn|pub\s+fn|export\s+(?:function|class))\s+(\w+)",
+                        re.M)
+
+
+def task_quality(repo, cand, issue, min_words):
+    """Why a candidate is not a fair bug-fix task, or None. Tasks should be bug fixes with a usable report."""
+    if len(re.findall(r"\w+", issue)) < min_words:
+        return f"bug report too vague ({issue!r})"
+    subject = issue.splitlines()[0]
+    if FEATURE_MSG_RE.search(subject) and not BUGFIX_WORD_RE.search(subject):
+        return "a feature, not a bug fix (message)"
+    diff = git(repo, "show", "--format=", "-U0", cand["sha"], "--", *cand["src_files"])
+    for name in NEW_DEF_RE.findall(diff):
+        if not name.startswith("_") and not re.search(rf"^-.*\b{name}\b", diff, re.M):
+            if not git(repo, "grep", "-q", "-w", name, cand["parent"], "--", *cand["src_files"], check=False):
+                return f"a feature, not a bug fix (adds new API {name})"
+    return None
 
 
 def is_test_path(path):
@@ -104,6 +125,12 @@ def build_tasks(repo, paths, cfg, validate=None, log=print):
             log(f"  drop {task_id}: empty commit message")
             shutil.rmtree(paths.hidden / task_id, ignore_errors=True)
             continue
+        if cfg.get("bugfix_only", True):
+            why = task_quality(repo, cand, task["issue"], cfg.get("min_issue_words", 4))
+            if why:
+                log(f"  drop {task_id}: {why}")
+                shutil.rmtree(paths.hidden / task_id, ignore_errors=True)
+                continue
         if validate:
             ok, why = validate(task)
             if not ok:

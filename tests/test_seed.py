@@ -65,10 +65,24 @@ def make_repo(root):
             f"    def test_{k}(self):\n        self.assertEqual(calc.{k}({arg}), {want})\n")
         sh(repo, "git", "add", "-A")
         sh(repo, "git", "commit", "-q", "-m", f"Fix {k} returning the wrong value\n\nSigned-off-by: t <t@example.com>")
-    # Noise: a docs-only fix and a feature with tests; neither is a task.
+    # Noise, none of which may become a task: a docs-only fix, a feature, and a fix with a vague message.
     (repo / "README.md").write_text("fix typo\n")
     sh(repo, "git", "add", "-A")
     sh(repo, "git", "commit", "-q", "-m", "Fix typo in README")
+    with open(repo / "calc.py", "a") as f:
+        f.write("def tenfold(x):\n    return x * 10\n")
+    (repo / "tests" / "test_tenfold.py").write_text(
+        "import unittest\nimport calc\n\n\nclass T(unittest.TestCase):\n"
+        "    def test_tenfold(self):\n        self.assertEqual(calc.tenfold(2), 20)\n")
+    sh(repo, "git", "add", "-A")
+    sh(repo, "git", "commit", "-q", "-m", "Add tenfold helper (closes #12)")
+    with open(repo / "calc.py", "a") as f:
+        f.write("\n\nLIMIT = 3\n")
+    (repo / "tests" / "test_limit.py").write_text(
+        "import unittest\nimport calc\n\n\nclass T(unittest.TestCase):\n"
+        "    def test_limit(self):\n        self.assertEqual(calc.LIMIT, 3)\n")
+    sh(repo, "git", "add", "-A")
+    sh(repo, "git", "commit", "-q", "-m", "fix it")
     return repo
 
 
@@ -176,7 +190,7 @@ class EndToEnd(unittest.TestCase):
         return json.loads(self.paths.tasks.read_text())
 
     def test_mine_builds_hidden_tasks(self):
-        tasks = self.mine()
+        tasks = self.mine()  # the feature commit and the vague "fix it" are filtered out
         self.assertEqual(sorted(t["issue"].split()[1] for t in tasks), sorted(BUGS))
         for t in tasks:
             self.assertEqual(t["hidden_tests"], [f"tests/{'test_' + t['issue'].split()[1]}.py"])
