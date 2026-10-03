@@ -238,7 +238,7 @@ def run_baseline(repo, paths, cfg, out=print):
         kept = [m for m in merged if m.task_id not in summary["flaky_tasks"]]
         summary = {**summary, **{sp: summarize([m for m in kept if m.split == sp]) for sp in ("train", "heldout")},
                    "all": summarize(kept)}
-    log_event(paths, kind="baseline", gen=0, score=summary)
+    log_event(paths, kind="baseline", gen=0, model=cfg.get("model"), score=summary)
     out(_fmt(summary))
     rate = summary["all"]["pass_rate"]
     if rate in (0.0, 1.0):
