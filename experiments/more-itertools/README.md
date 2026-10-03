@@ -63,3 +63,31 @@ message, a later re-mine can drop them.
 The hidden tests passed (655) and the regression suite stayed green (840). The one-line fix and the full
 result are in `smoke-cca32949f1/`. The agent's final message said it had *not* run the tests, so it
 claimed nothing. That is honest, and it shows why the Judge's own test run is the evidence.
+
+## Baseline (plain Claude Code, Sonnet 5.5, 3 runs per task)
+
+96 attempts, **$7.32** in total (about $0.077 per attempt), roughly an hour with 3 workers. That's about a
+third of the ~$20 estimate.
+
+- **Gate 0 passed:** 76 of 96 attempts passed (79%). That's neither 0% nor 100%, so the tasks are usable.
+- **Gate 2:** 4 of 32 tasks gave different results across their 3 runs and were dropped as noisy:
+  `073d23421b`, `3150ad2e05`, `ab72fc8a4e`, `e08fff0833`. Two of those four were the ⚠ feature-like tasks.
+- **On the 28 stable tasks:** train **15/17 (88%)**, held-out **8/11 (73%)**. Every stable task went 3/3 or 0/3.
+  Failures were all `WRONG_FIX`. There were no cheats, no regressions and no timeouts, and 1 false claim.
+
+### Why the 5 consistently failing tasks fail
+
+| task | split | cause |
+|---|---|---|
+| `71b46b06fb` windowed | held-out | agent misread: validated `step`, not the size `n` the report means |
+| `8089263d23` unique_everseen recipe | held-out | underspecified: the tests require `TypeError` for unhashables, and the report doesn't say so |
+| `def2d821c0` nth_permutation | held-out | underspecified: "Fix incorrect exception" doesn't name the exception the tests expect |
+| `cd0a3a87d2` iterate() | train | agent misread: suppressed every `StopIteration`, but the tests want other errors to propagate |
+| `21d3d88359` reshape | train | a feature the filter missed (multidimensional shapes) |
+
+### What this means
+
+There's very little headroom on this repo with this model. Only **2 train tasks** fail, and one of them is
+a feature. With the keep margin of 2 net flips, the ratchet could keep a change only if it fixed both.
+Held-out has 3 failing tasks, so even a perfect harness that flipped all 3 would give a sign-test p of
+0.25 at best. **Repo A, with Sonnet 5.5, can show that the loop runs, but it cannot show that a harness helps.**
