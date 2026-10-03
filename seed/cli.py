@@ -79,7 +79,8 @@ def cmd_mine(args, paths):
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
     train = sum(t["split"] == "train" for t in tasks)
-    print(f"{len(tasks)} tasks: {train} train, {len(tasks) - train} held-out")
+    print(f"{len(tasks)} tasks: {train} train, {len(tasks) - train} held-out "
+          f"(split by {cfg.get('split_mode', 'time')})")
     # Freeze: from here on the judge and SEED.md are read-only and hash-checked.
     paths.manifest.write_text(gitutil.tree_hash(paths.frozen) + "\n")
     gitutil.set_readonly(paths.judge)
@@ -100,6 +101,10 @@ def cmd_evolve(args, paths):
     print(loop.report(paths))
 
 
+def cmd_confirm(args, paths):
+    loop.run_confirm(paths.repo, paths, load_config(paths), args.runs)
+
+
 def cmd_reflect(args, paths):
     loop.run_reflect(paths.repo, paths, load_config(paths))
 
@@ -109,6 +114,7 @@ def cmd_run(args, paths):
     loop.run_baseline(paths.repo, paths, cfg)
     loop.run_build(paths.repo, paths, cfg)
     loop.run_evolve(paths.repo, paths, cfg, args.generations)
+    loop.run_confirm(paths.repo, paths, cfg)
     loop.run_reflect(paths.repo, paths, cfg)
     print(loop.report(paths))
 
@@ -165,8 +171,10 @@ def main(argv=None):
     sub.add_parser("build", help="Observer + Builder -> harness v0, then score it (Gate 1)")
     s = sub.add_parser("evolve", help="Evolver + ratchet for N generations")
     s.add_argument("--generations", type=int)
+    s = sub.add_parser("confirm", help="final verdict: fresh baseline vs harness runs on held-out, paired")
+    s.add_argument("--runs", type=int)
     sub.add_parser("reflect", help="Reflector writes seed-proposals.md for human review")
-    s = sub.add_parser("run", help="baseline, build, evolve, reflect")
+    s = sub.add_parser("run", help="baseline, build, evolve, confirm, reflect")
     s.add_argument("--generations", type=int)
     s = sub.add_parser("rescore", help="re-grade recorded runs with the current judge, no model calls")
     s.add_argument("label", help="a directory under .seed/runs, e.g. baseline, v0, gen3")

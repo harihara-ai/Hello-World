@@ -117,6 +117,37 @@ class UnitTests(unittest.TestCase):
         self.assertFalse(loop.is_better(s(0.5, 0.5), s(0.5, 0.5))[0])
         self.assertTrue(loop.is_better(s(0.5, 0.5, cost=0.5), s(0.5, 0.5))[0])
 
+    def test_keep_margin_counts_net_task_flips(self):
+        def s(passed):
+            return {"train": {"pass_rate": len(passed) / 10, "passed": len(passed), "passed_tasks": passed,
+                              "cost": 1.0, "turns": 10}, "heldout": {"pass_rate": 0.5}}
+        base = s(["a", "b"])
+        self.assertFalse(loop.is_better(s(["a", "b", "c"]), base, min_net_flips=2)[0])
+        self.assertFalse(loop.is_better(s(["c", "d"]), base, min_net_flips=1)[0])  # swapped, net 0
+        self.assertTrue(loop.is_better(s(["a", "b", "c", "d"]), base, min_net_flips=2)[0])
+
+    def test_overfitting_guard_flags_training_identifiers(self):
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            paths = SeedPaths(tmp)
+            paths.judge.mkdir(parents=True)
+            paths.tasks.write_text(json.dumps([
+                {"id": "t1", "split": "train", "issue": "Fix one()/only() dropping a falsy `default` in running_min"},
+                {"id": "t2", "split": "heldout", "issue": "Raise for negative sizes in sliced()"}]))
+            loop.harness_init(paths)
+            (paths.harness / "facts.md").write_text("- package: more_itertools\n")
+            loop.harness_commit(paths, "v0")
+            (paths.harness / "CLAUDE.md").write_text("Reproduce first. Check running_min and only() edge cases.\n"
+                                                     "Use more_itertools tests. sliced() is fine.\n")
+            self.assertEqual(loop.training_identifiers_in_change(paths), ["only", "running_min"])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_paired_verdict(self):
+        v = loop.paired_verdict({"a": 0, "b": 0, "c": 1, "d": 0.5}, {"a": 1, "b": 1, "c": 1, "d": 0})
+        self.assertEqual((v["wins"], v["losses"], v["ties"]), (2, 1, 1))
+        self.assertEqual(v["p_value"], 1.0)
+
 
 class EndToEnd(unittest.TestCase):
     def setUp(self):
@@ -131,7 +162,7 @@ class EndToEnd(unittest.TestCase):
         cfg.update(test_cmd=f"{sys.executable} -m unittest {{tests}}",
                    regression_cmd=f"{sys.executable} -m unittest discover -s tests -t .",
                    agent_cmd=[sys.executable, str(ROOT / "tests" / "fake_agent.py"), "{prompt_file}"],
-                   baseline_runs=1, heldout_fraction=0.0)
+                   baseline_runs=1, heldout_fraction=0.0, min_net_flips=1, confirm_runs=2)
         self.paths.config.write_text(json.dumps(cfg))
 
     def tearDown(self):
@@ -180,7 +211,7 @@ class EndToEnd(unittest.TestCase):
         cands = [e for e in log if e["kind"] == "candidate"]
         reasons = [e["reason"] for e in cands]
         self.assertTrue(any(e["kept"] for e in cands))
-        self.assertIn("train pass rate up", reasons)
+        self.assertIn("train up by 1 net task flips", reasons)
         self.assertTrue(any("held-out dropped" in r or "down" in r for r in reasons))  # sabotage reverted
         self.assertTrue(any(r.startswith("change too big") for r in reasons))
         self.assertIn("repeats a rejected change", reasons)  # retry rule: no second scoring
@@ -194,6 +225,9 @@ class EndToEnd(unittest.TestCase):
         self.assertGreater(best["train"]["passed"], v0["train"]["passed"])
         self.assertLessEqual(best["train"]["passed"], len(train_ids))
 
+        verdict = quiet(loop.run_confirm, self.repo, self.paths, cfg)
+        self.assertEqual(verdict["tasks"], 1)  # the one held-out task, run twice per arm
+        self.assertIn("confirmed on held-out", loop.report(self.paths))
         quiet(loop.run_reflect, self.repo, self.paths, cfg)
         self.assertTrue(self.paths.proposals.exists())
         self.assertIn("generations:", loop.report(self.paths))

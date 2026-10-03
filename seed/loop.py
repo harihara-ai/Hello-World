@@ -1,6 +1,8 @@
 """Roles (Observer, Builder, Evolver, Reflector), the ratchet, and the fail-fast gates."""
 import hashlib
 import json
+import math
+import re
 import shutil
 import tempfile
 import time
@@ -77,6 +79,31 @@ def change_fingerprint(paths):
     return hashlib.sha256("\n".join(lines).encode()).hexdigest()[:16]
 
 
+CODE_TOKEN_RE = re.compile(r"`([^`]+)`|\b([A-Za-z_][\w.]*(?:_[\w.]*|\(\)|\.[A-Za-z_]\w*))")
+
+
+def training_identifiers(paths):
+    """Code-like names from training bug reports (snake_case, dotted, called(), `quoted`)."""
+    names = set()
+    for t in load_tasks(paths, "train"):
+        for quoted, bare in CODE_TOKEN_RE.findall(t["issue"]):
+            tok = (quoted or bare).strip().rstrip("()").strip(".")
+            if len(tok) >= 4 and not tok.startswith("http"):
+                names.add(tok)
+    facts = (paths.harness / "facts.md")
+    general = facts.read_text() if facts.exists() else ""
+    # Names the Observer found on its own (package names, entry points) are general, not leaks.
+    return {n for n in names if n not in general}
+
+
+def training_identifiers_in_change(paths):
+    harness_git(paths, "add", "-A")
+    diff = harness_git(paths, "diff", "--cached", "--unified=0", "--", ".", ":(exclude)facts.md")
+    added = "\n".join(l[1:] for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++"))
+    return sorted(n for n in training_identifiers(paths)
+                  if re.search(rf"(?<![\w.]){re.escape(n)}(?![\w])", added))
+
+
 def change_size(paths):
     """Changed lines in the uncommitted harness edit (facts.md excluded)."""
     harness_git(paths, "add", "-A")
@@ -139,13 +166,27 @@ def score(repo, paths, cfg, harness, label, runs=None):
     return summary, merged
 
 
-def is_better(cand, best):
-    """Keep only if train improves and held-out does not drop. Tie-break on cost, then turns."""
+def is_better(cand, best, min_net_flips=1):
+    """Keep only if train improves by a margin and held-out does not drop. Tie-break on cost, then turns.
+
+    The margin is in net task flips (newly passing minus newly failing train tasks), so a one-task
+    wobble from run-to-run noise is not mistaken for progress.
+    """
     if cand["heldout"]["pass_rate"] < best["heldout"]["pass_rate"]:
         return False, "held-out dropped"
-    if cand["train"]["pass_rate"] > best["train"]["pass_rate"]:
-        return True, "train pass rate up"
-    if cand["train"]["pass_rate"] < best["train"]["pass_rate"]:
+    if "passed_tasks" in cand["train"] and "passed_tasks" in best["train"]:
+        now, before = set(cand["train"]["passed_tasks"]), set(best["train"]["passed_tasks"])
+        net = len(now - before) - len(before - now)
+    elif "passed" in cand["train"] and "passed" in best["train"]:  # older entries: counts only
+        net = cand["train"]["passed"] - best["train"]["passed"]
+    else:
+        diff = cand["train"]["pass_rate"] - best["train"]["pass_rate"]
+        net = (diff > 0) - (diff < 0)
+    if net >= min_net_flips:
+        return True, f"train up by {net} net task flips"
+    if net > 0:
+        return False, f"train up by {net}, below the {min_net_flips}-flip margin"
+    if net < 0:
         return False, "train pass rate down"
     if cand["train"]["cost"] < 0.9 * best["train"]["cost"]:
         return True, "same pass rate, >=10% cheaper"
@@ -296,9 +337,18 @@ def run_evolve(repo, paths, cfg, generations=None, out=print):
             out(f"  reverted: change too big ({size} lines)")
             no_gain += 1
             continue
+        leaked = training_identifiers_in_change(paths)
+        if leaked:
+            # Overfitting guard: a rule about one training task's function won't generalize.
+            harness_revert(paths)
+            log_event(paths, kind="candidate", gen=gen, change=change, harness=sha, fingerprint=fingerprint,
+                      kept=False, reason=f"names training-task identifiers: {', '.join(leaked[:5])}")
+            out(f"  reverted: names training-task identifiers {leaked[:5]}")
+            no_gain += 1
+            continue
         label = f"gen{gen}"
         summary, _ = score(repo, paths, cfg, paths.harness, label)
-        keep, reason = is_better(summary, best)
+        keep, reason = is_better(summary, best, cfg.get("min_net_flips", 1))
         if summary["budget_exhausted"]:
             keep, reason = False, "generation budget exhausted before all tasks ran"
         if keep:
@@ -335,6 +385,54 @@ def _load_merged(paths, label):
     return merged
 
 
+def run_confirm(repo, paths, cfg, runs=None, out=print):
+    """The verdict: fresh runs of plain Claude Code vs. the final harness on held-out tasks.
+
+    The ratchet's own scores are biased upward (it kept whatever scored best), so success is
+    judged only here, task by task, with a sign test over tasks where the two differ.
+    """
+    runs = runs or cfg["confirm_runs"]
+    tasks = load_tasks(paths, "heldout", exclude=load_state(paths).get("excluded_tasks", []))
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    rates = {}
+    for name, harness in (("base", None), ("harness", paths.harness)):
+        label = f"confirm-{stamp}-{name}"
+        out(f"Confirm: {name} x{runs} on {len(tasks)} held-out tasks")
+        summary, _ = judge(repo, paths, cfg, tasks, harness, label, runs=runs)
+        spend(paths, summary["spent_usd"])
+        if summary["budget_exhausted"]:
+            raise GateFailed("confirmation ran out of generation budget; raise max_cost_per_generation_usd")
+        rates[name] = per_task_rates(paths, label)
+    verdict = paired_verdict(rates["base"], rates["harness"])
+    log_event(paths, kind="confirm", runs=runs, verdict=verdict)
+    out(f"  harness better on {verdict['wins']} tasks, worse on {verdict['losses']}, "
+        f"tied on {verdict['ties']}; mean gain {verdict['mean_gain']:+.0%}; sign test p={verdict['p_value']:.3f}")
+    return verdict
+
+
+def per_task_rates(paths, label):
+    """Pass fraction per task across repeated runs; judge-side failures are left out."""
+    rates = {}
+    for task_dir in sorted((paths.runs / label).iterdir()):
+        rs = [json.loads(f.read_text()) for f in task_dir.glob("run*/result.json")]
+        rs = [r for r in rs if r.get("category") not in JUDGE_SIDE]
+        if rs:
+            rates[task_dir.name] = sum(r["passed"] for r in rs) / len(rs)
+    return rates
+
+
+def paired_verdict(base, harness):
+    common = sorted(set(base) & set(harness))
+    diffs = [harness[t] - base[t] for t in common]
+    wins, losses = sum(d > 0 for d in diffs), sum(d < 0 for d in diffs)
+    n, k = wins + losses, min(wins, losses)
+    # Two-sided exact sign test over the tasks where the two disagree.
+    p = min(1.0, 2 * sum(math.comb(n, i) for i in range(k + 1)) / 2 ** n) if n else 1.0
+    return {"tasks": len(common), "wins": wins, "losses": losses, "ties": len(common) - n,
+            "mean_gain": sum(diffs) / len(diffs) if diffs else 0.0, "p_value": round(p, 4),
+            "per_task": {t: [base[t], harness[t]] for t in common}}
+
+
 def run_reflect(repo, paths, cfg, out=print):
     out("Reflector: proposing seed-prompt edits")
     run_role(repo, paths, cfg, "reflector", extra_dirs=[PROMPTS],
@@ -351,9 +449,15 @@ def report(paths):
         lines.append(f"baseline: {_fmt(base)}")
     if best:
         lines.append(f"current : {_fmt(best)}")
-    if base and best:
-        verdict = best["heldout"]["pass_rate"] > base["heldout"]["pass_rate"]
-        lines.append(f"beats baseline on held-out: {'YES' if verdict else 'no'}")
+    confirms = [e for e in log if e["kind"] == "confirm"]
+    if confirms:
+        v = confirms[-1]["verdict"]
+        lines.append(f"confirmed on held-out ({confirms[-1]['runs']} runs each): better on {v['wins']}, "
+                     f"worse on {v['losses']}, tied on {v['ties']} tasks; mean gain {v['mean_gain']:+.0%}, "
+                     f"sign test p={v['p_value']}")
+    elif base and best:
+        lines.append("held-out verdict: not confirmed yet (the ratchet's scores are biased upward; "
+                     "run `seed confirm`)")
     reverted = [e for e in log if e["kind"] == "candidate" and not e.get("kept")]
     kept = [e for e in log if e["kind"] == "candidate" and e.get("kept")]
     lines.append(f"generations: {len(kept)} kept, {len(reverted)} reverted by the ratchet")

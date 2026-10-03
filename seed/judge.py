@@ -219,6 +219,7 @@ def summarize(results):
         "output_tokens": sum(r.output_tokens for r in results),
         "categories": dict(sorted(categories.items())),
         "failed_tasks": sorted(r.task_id for r in scored if not r.passed),
+        "passed_tasks": sorted(r.task_id for r in scored if r.passed),
     }
 
 

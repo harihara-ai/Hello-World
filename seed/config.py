@@ -30,8 +30,13 @@ DEFAULTS = {
     "runs_per_task": 1,
     "baseline_runs": 3,  # Gate 2: repeat baseline runs to find noisy tasks
     "heldout_fraction": 0.34,
+    # "time": hold out the newest commits (tests generalization to future work); "hash": random.
+    "split_mode": "time",
+    # Keep a change only if it nets at least this many newly passing train tasks.
+    "min_net_flips": 2,
+    "confirm_runs": 3,
     "max_src_files_per_task": 5,
-    "max_tasks": 40,
+    "max_tasks": 80,
     "workers": 1,
     "model": None,
     # Override the agent command (e.g. for tests). Placeholders: {prompt_file}, {cwd}.

@@ -40,15 +40,15 @@ def issue_text(message):
 
 def candidates(repo, max_src_files=5):
     """Yield fix commits that change both source and test files."""
-    out = git(repo, "log", "--no-merges", "--name-only", "--format=%x1e%H %P")
+    out = git(repo, "log", "--no-merges", "--name-only", "--format=%x1e%ct %H %P")
     for block in out.split("\x1e"):
         lines = [l for l in block.strip().splitlines() if l.strip()]
         if not lines:
             continue
-        shas = lines[0].split()
-        if len(shas) != 2:  # root commit
+        head = lines[0].split()
+        if len(head) != 3:  # root commit
             continue
-        sha, parent = shas
+        date, sha, parent = int(head[0]), head[1], head[2]
         files = lines[1:]
         tests = [f for f in files if is_test_path(f)]
         src = [f for f in files if not is_test_path(f) and not NON_SOURCE_RE.search(f)]
@@ -57,7 +57,7 @@ def candidates(repo, max_src_files=5):
         message = git(repo, "log", "-1", "--format=%B", sha)
         if not FIX_MSG_RE.search(message):
             continue
-        yield {"sha": sha, "parent": parent, "message": message,
+        yield {"sha": sha, "parent": parent, "date": date, "message": message,
                "test_files": tests, "src_files": src}
 
 
@@ -98,7 +98,7 @@ def build_tasks(repo, paths, cfg, validate=None, log=print):
             "hidden_tests": hidden,
             "run_tests": runnable,
             "src_files": cand["src_files"],
-            "split": split_for(cand["sha"], cfg["heldout_fraction"]),
+            "date": cand["date"],
         }
         if not task["issue"]:
             log(f"  drop {task_id}: empty commit message")
@@ -112,11 +112,25 @@ def build_tasks(repo, paths, cfg, validate=None, log=print):
                 continue
             if why:
                 log(f"  note {task_id}: {why}")
-        log(f"  keep {task_id} [{task['split']}] {task['issue'].splitlines()[0][:70]}")
+        log(f"  keep {task_id} {task['issue'].splitlines()[0][:70]}")
         tasks.append(task)
+    assign_splits(tasks, cfg.get("split_mode", "time"), cfg["heldout_fraction"])
     _ensure_both_splits(tasks)
     paths.tasks.write_text(json.dumps(tasks, indent=2))
     return tasks
+
+
+def assign_splits(tasks, mode, heldout_fraction):
+    """time: the newest commits are held out, so held-out asks "does it generalize forward?"."""
+    if mode == "hash":
+        for t in tasks:
+            t["split"] = split_for(t["sha"], heldout_fraction)
+        return
+    n_heldout = round(len(tasks) * heldout_fraction)
+    newest_first = sorted(tasks, key=lambda t: t["date"], reverse=True)
+    heldout = {t["id"] for t in newest_first[:n_heldout]}
+    for t in tasks:
+        t["split"] = "heldout" if t["id"] in heldout else "train"
 
 
 def _ensure_both_splits(tasks):

@@ -19,12 +19,13 @@ python -m seed mine              # mines tasks, checks fail-before/pass-after, f
 python -m seed baseline          # plain Claude Code (Gates 0 and 2)
 python -m seed build             # Observer -> Builder -> v0, scored (Gate 1)
 python -m seed evolve --generations 5
+python -m seed confirm           # the verdict: fresh baseline vs harness on held-out, paired
 python -m seed reflect           # writes .seed/seed-proposals.md for a human
 python -m seed report
 ```
 
 Run it from a checkout of this repo (`PYTHONPATH=/path/to/this/repo`), or pass `--repo PATH`.
-`python -m seed run` runs baseline, build, evolve and reflect in one go.
+`python -m seed run` runs baseline, build, evolve, confirm and reflect in one go.
 
 ## Layout in the repo under test
 
@@ -82,6 +83,18 @@ Notes on choices the spec leaves open:
   saved diffs on clean checkouts and grades them with the current judge, with no model calls. Use it
   after making the judge stricter.
 - **Smoke test.** `seed try <task-id> --max-turns 15 --max-cost 1` runs one capped attempt at one task.
+- **Split by time.** By default (`split_mode: "time"`) the newest third of tasks is held out, so held-out
+  measures whether the harness generalizes to *later* work, not just to other bugs from the same era.
+  `"hash"` gives a random split.
+- **Keep margin.** A change is kept only if it nets at least `min_net_flips` (default 2) newly passing
+  train tasks, counted task by task. A one-task wobble from run-to-run noise doesn't count as progress.
+- **Overfitting guard.** A change whose added lines name code identifiers from training bug reports
+  (snake_case, dotted, `called()`, or `quoted` names) is reverted unscored. Names the Observer recorded in
+  `facts.md` count as general knowledge, not leaks.
+- **Confirmation is the verdict.** The ratchet keeps whatever scored best, so its logged scores are biased
+  upward. `seed confirm` runs plain Claude Code and the final harness fresh, `confirm_runs` times each
+  (default 3), on held-out tasks only. It compares pass rates task by task and runs an exact sign test.
+  `seed report` shows that verdict, not the ratchet's scores.
 - **Gate 2.** The baseline runs each task `baseline_runs` times (default 3). Tasks with mixed
   results are dropped from all later scoring.
 - **Roles never touch your working tree.** Observer, Builder and Evolver run in a throwaway
