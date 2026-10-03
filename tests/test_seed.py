@@ -287,6 +287,16 @@ class EndToEnd(unittest.TestCase):
             quiet(loop.run_baseline, self.repo, self.paths, cfg)
         self.assertIn("frozen", str(ctx.exception))
 
+    def test_total_budget_blocks_new_runs(self):
+        self.mine()
+        cfg = dict(json.loads(self.paths.config.read_text()), max_total_cost_usd=1.0)
+        from seed.config import save_state
+        save_state(self.paths, {"excluded_tasks": [], "spent_usd": 1.0})
+        with self.assertRaises(loop.GateFailed) as ctx:
+            quiet(loop.run_baseline, self.repo, self.paths, cfg)
+        self.assertIn("total budget", str(ctx.exception))
+        self.assertFalse((self.paths.runs / "baseline").exists())  # nothing was started
+
     def test_gate0_stops_on_all_fail(self):
         self.mine()
         cfg = json.loads(self.paths.config.read_text())

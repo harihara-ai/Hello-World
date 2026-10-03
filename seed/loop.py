@@ -157,11 +157,20 @@ def spend(paths, usd):
 
 # ---- scoring helpers ----
 
-def score(repo, paths, cfg, harness, label, runs=None):
+def check_total_budget(paths, cfg):
+    spent = load_state(paths).get("spent_usd", 0.0)
+    if spent >= cfg["max_total_cost_usd"]:
+        raise GateFailed(f"total budget reached (${spent:.2f} of ${cfg['max_total_cost_usd']}); not starting more runs")
+    return cfg["max_total_cost_usd"] - spent
+
+
+def score(repo, paths, cfg, harness, label, runs=None, budget=None):
     state = load_state(paths)
+    left = check_total_budget(paths, cfg)
     tasks = load_tasks(paths, exclude=state.get("excluded_tasks", []))
+    budget = min(budget or cfg["max_cost_per_generation_usd"], left)
     summary, merged = judge(repo, paths, cfg, tasks, harness, label,
-                            runs=runs or cfg["runs_per_task"])
+                            runs=runs or cfg["runs_per_task"], budget=budget)
     spend(paths, summary["spent_usd"])
     return summary, merged
 
@@ -214,7 +223,12 @@ def baseline_summary(paths):
 
 def run_baseline(repo, paths, cfg, out=print):
     out("Baseline: plain Claude Code, no harness")
-    summary, merged = score(repo, paths, cfg, None, "baseline", runs=cfg["baseline_runs"])
+    runs = cfg["baseline_runs"]
+    budget = cfg.get("max_cost_baseline_usd") or cfg["max_cost_per_generation_usd"] * runs
+    summary, merged = score(repo, paths, cfg, None, "baseline", runs=runs, budget=budget)
+    if summary["budget_exhausted"]:
+        raise GateFailed(f"baseline stopped at its ${budget} cap before every run finished; "
+                         "results are incomplete (raise max_cost_baseline_usd to finish)")
     if summary["flaky_tasks"]:
         # Gate 2: noisy tasks are dropped from all later scoring.
         state = load_state(paths)
@@ -466,10 +480,12 @@ def run_confirm(repo, paths, cfg, runs=None, out=print):
     for name, harness in (("base", None), ("harness", paths.harness)):
         label = f"confirm-{stamp}-{name}"
         out(f"Confirm: {name} x{runs} on {len(tasks)} held-out tasks")
-        summary, _ = judge(repo, paths, cfg, tasks, harness, label, runs=runs)
+        budget = min(cfg.get("max_cost_confirm_usd") or cfg["max_cost_per_generation_usd"] * runs,
+                     check_total_budget(paths, cfg))
+        summary, _ = judge(repo, paths, cfg, tasks, harness, label, runs=runs, budget=budget)
         spend(paths, summary["spent_usd"])
         if summary["budget_exhausted"]:
-            raise GateFailed("confirmation ran out of generation budget; raise max_cost_per_generation_usd")
+            raise GateFailed(f"confirmation stopped at its ${budget} cap; raise max_cost_confirm_usd")
         rates[name] = per_task_rates(paths, label)
     verdict = paired_verdict(rates["base"], rates["harness"])
     log_event(paths, kind="confirm", runs=runs, verdict=verdict)

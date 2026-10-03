@@ -20,6 +20,9 @@ DEFAULTS = {
     "max_cost_per_task_usd": 2.0,
     "max_cost_per_generation_usd": 25.0,
     "max_total_cost_usd": 150.0,
+    # Baseline and confirm run every task several times; null = per-generation cap x runs.
+    "max_cost_baseline_usd": None,
+    "max_cost_confirm_usd": None,
     "max_generations": 6,
     "patience": 3,
     "agent_timeout_s": 1800,
