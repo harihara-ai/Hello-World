@@ -1,0 +1,91 @@
+Mining fix-with-test commits (validating each task)
+  keep def2dabea8 Fix one()/only() dropping a falsy user-supplied exception
+  keep 6b1907de29 fix: seekable.peek/bool no longer drop items when maxlen is 0
+  drop 5c715d813a: hidden tests already pass before the fix
+  keep d992be0de9 Fix stability in running_min and running_max
+  keep 958990e22c Raise for negative slice sizes in sliced()
+  keep f51a53bfd2 fix: handle empty interleave_evenly input
+  keep edb3346f83 Fix empty ranges in numeric_range.__reversed__
+  keep 71b46b06fb Issue #1057: Raise exception for invalid size in windowed()
+  keep 8089263d23 Issue: #898: Sync recipe with main docs. Eliminate quadratic fallback.
+  drop 18c57c720f: a feature, not a bug fix (message)
+  drop d71c4ad9f8: hidden tests already pass before the fix
+  keep be5793a55f Two fixes for repeat with iterator arguments
+  keep 06f3181912 Simplify nth_combination_with_replacement. Fix incorrect exception.
+  keep def2d821c0 Simplify nth_permutation. Fix incorrect exception.
+  keep b0aa91efbb Fix random_product() as well
+  keep 073d23421b Fix support for iterators using "repeat"
+  keep adeda34bd1 Fix bug for negative inputs to exactly_n(). Optimize code.
+  keep cf186b5de4 Fix product_index() with iterator input
+  drop 946323176b: hidden tests already pass before the fix
+  keep 21d3d88359 Issue 1003: Multidimensional reshape() (#1062)
+  drop 11c8280461: bug report too vague ('Fix review comments')
+  keep cca32949f1 fix last() when __reversed__ is None
+  drop f5774b65f7: hidden tests already pass before the fix
+  keep ae37eb38a1 Add more sample() tests and fix bug in strict option with counts
+  keep 8ee69910e8 remove string.format(); fix tests
+  drop 6197c8d5c9: hidden tests already pass before the fix
+  keep e733192454 Issue 916: lt only for is_sorted (#917)
+  drop 0de415570d: bug report too vague ('fix checks')
+  drop 4bd0bd8762: hidden tests already pass before the fix
+  drop 33ff9cd2ed: a feature, not a bug fix (message)
+  keep db67158d79 Fixed.  Indices need to be sorted.
+  drop 53b2aee41f: a feature, not a bug fix (message)
+  drop 810634f8fb: hidden tests already pass before the fix
+  drop 329f05b2a7: hidden tests already pass before the fix
+  keep ab72fc8a4e Fix unique_in_window to match described behavior
+  keep cd0a3a87d2 Issue #707: fix ``iterate()`` to enable ``func`` to raise StopIteratio
+  drop b63055332f: a feature, not a bug fix (message)
+  keep 9245cd04c0 Fix issue 658 for split_after
+  drop 9f4f31faab: bug report too vague ('Fix linter complaints')
+  drop 395bdfc00d: hidden tests fail even with the fix
+  keep 49a4b3c94b Fix bugs in chunked_even
+  keep fb89af02fd fixed repeat_each() to accept infinite iterators as input
+  drop 15927a5058: a feature, not a bug fix (message)
+  keep 2e81a562fb Fix split_before for an empty collections.
+  drop 1604bc368d: a feature, not a bug fix (message)
+  drop 9c8dabe6e2: a feature, not a bug fix (message)
+  drop 27fe19e72e: a feature, not a bug fix (adds new API pad_none)
+  drop 254133ff84: hidden tests already pass before the fix
+  drop b1042ae2e9: bug report too vague ('nth_product fixes')
+  drop 44a2b1d9ad: hidden tests already pass before the fix
+  drop 3191c36090: a feature, not a bug fix (message)
+  drop 29288c851d: a feature, not a bug fix (message)
+  drop 78405e9b24: a feature, not a bug fix (message)
+  drop ac26d863f8: bug report too vague ('is_sorted function (#434)')
+  drop 35f4cc5376: bug report too vague ('Fix flake8 issues.')
+  drop 3c1e75e02f: hidden tests already pass before the fix
+  keep fc0bb86f4c Slice support for islice_extended  (#429)
+  keep 62411c1618 Fix spy to make returned iterable immutable
+  drop f77823f366: hidden tests already pass before the fix
+  keep 3150ad2e05 Define bucket.__iter__ (#371)
+  keep 39306e8aa5 maxlen parameter for seekable (#365)
+  keep e08fff0833 Make numeric_range an iterable (#363)
+  drop 683cd592af: hidden tests already pass before the fix
+  drop 500e9bb214: bug report too vague ('Fix long lines')
+  drop e0ee0c0f45: hidden tests fail even with the fix
+  drop cfff50fab6: hidden tests already pass before the fix
+  drop 75a0100fda: a feature, not a bug fix (message)
+  drop 36617d4a02: a feature, not a bug fix (message)
+  drop a37956f7ef: a feature, not a bug fix (message)
+  drop 27fcf25415: bug report too vague ('Fix typos')
+  drop e768069369: hidden tests already pass before the fix
+  drop edfb4704ef: a feature, not a bug fix (message)
+  drop a2f4c884e0: a feature, not a bug fix (adds new API circular_shifts)
+  drop 983ec7c2a8: hidden tests fail even with the fix
+  drop 5ad28b426f: bug report too vague ('Fix missing newlines')
+  drop 93846781b9: bug report too vague ('Fix Flake issues')
+  drop 7f2319709b: bug report too vague ('Fix long lines')
+  drop 6c488b14b5: a feature, not a bug fix (adds new API islice_extended)
+  drop 86c2172b2c: hidden tests fail even with the fix
+  drop b7147dde5d: bug report too vague ('Add locate() (#140)')
+  drop 5a2c25c169: hidden tests fail even with the fix
+  drop ce59c3b235: hidden tests fail even with the fix
+  drop c6652c0a11: a feature, not a bug fix (message)
+  drop da192d722f: hidden tests fail even with the fix
+  drop 0248fecf5e: a feature, not a bug fix (message)
+  drop 87cc70d6b5: hidden tests fail even with the fix
+  drop 44bc7e0080: a feature, not a bug fix (adds new API ilen)
+  drop 356e465093: hidden tests fail even with the fix
+32 tasks: 21 train, 11 held-out (split by time)
+Froze judge (hash in /tmp/claude-0/-home-user-Hello-World/877eb07d-badd-5a74-a9a3-0f3e35a195fd/scratchpad/repoA/.seed/judge.sha256)
