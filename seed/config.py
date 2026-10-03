@@ -35,6 +35,8 @@ DEFAULTS = {
     # Keep a change only if it nets at least this many newly passing train tasks.
     "min_net_flips": 2,
     "confirm_runs": 3,
+    # Every Nth generation, try deleting one harness piece instead of adding one (0 = never).
+    "ablate_every": 3,
     "max_src_files_per_task": 5,
     "max_tasks": 80,
     "workers": 1,

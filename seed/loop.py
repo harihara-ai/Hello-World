@@ -305,6 +305,10 @@ def run_evolve(repo, paths, cfg, generations=None, out=print):
         if no_gain >= cfg["patience"]:
             out(f"Stop: {no_gain} generations with no gain")
             break
+        unit = next_removal(paths) if cfg.get("ablate_every") and gen % cfg["ablate_every"] == 0 else None
+        if unit:
+            best, last_label = removal_trial(repo, paths, cfg, gen, unit, best, last_label, out)
+            continue
         out(f"Generation {gen}: Evolver")
         merged = _load_merged(paths, last_label)
         digest = paths.root / "evolver_input"
@@ -360,6 +364,70 @@ def run_evolve(repo, paths, cfg, generations=None, out=print):
                   fingerprint=fingerprint, score=summary, kept=keep, reason=reason)
         out(f"  {'KEPT' if keep else 'REVERTED'} ({reason}): {change}\n{_fmt(summary)}")
     return best
+
+
+# ---- removal trials: harnesses should not only grow ----
+
+def harness_units(paths):
+    """Removable pieces: each CLAUDE.md paragraph, and every other harness file."""
+    units = []
+    for f in sorted(p for p in paths.harness.rglob("*") if p.is_file()):
+        rel = f.relative_to(paths.harness).as_posix()
+        if rel.startswith(".git/") or rel == "facts.md":
+            continue
+        text = f.read_text(errors="replace")
+        if rel == "CLAUDE.md":
+            for para in re.split(r"\n\s*\n", text.strip()):
+                if para.strip():
+                    key = "CLAUDE.md#" + hashlib.sha256(para.encode()).hexdigest()[:12]
+                    first = para.strip().splitlines()[0][:50]
+                    units.append({"key": key, "file": rel, "para": para, "desc": f'CLAUDE.md paragraph "{first}"'})
+        else:
+            key = f"{rel}#" + hashlib.sha256(text.encode()).hexdigest()[:12]
+            units.append({"key": key, "file": rel, "para": None, "desc": rel})
+    return units
+
+
+def next_removal(paths):
+    tried = set(load_state(paths).get("removal_trials", []))
+    return next((u for u in harness_units(paths) if u["key"] not in tried), None)
+
+
+def apply_removal(paths, unit):
+    f = paths.harness / unit["file"]
+    if unit["para"] is None:
+        f.unlink()
+        return
+    paras = [p for p in re.split(r"\n\s*\n", f.read_text().strip()) if p.strip() and p != unit["para"]]
+    if paras:
+        f.write_text("\n\n".join(paras) + "\n")
+    else:
+        f.unlink()
+
+
+def removal_trial(repo, paths, cfg, gen, unit, best, last_label, out=print):
+    """Delete one piece; keep the deletion if nothing got worse (simpler at equal score wins)."""
+    out(f"Generation {gen}: removal trial ({unit['desc']})")
+    apply_removal(paths, unit)
+    change = f"remove {unit['desc']}"
+    sha = harness_commit(paths, f"gen {gen}: {change}")
+    label = f"gen{gen}"
+    summary, _ = score(repo, paths, cfg, paths.harness, label)
+    keep, reason = is_better(summary, best, 0)
+    reason = "simpler, no worse" if keep else reason
+    if summary["budget_exhausted"]:
+        keep, reason = False, "generation budget exhausted before all tasks ran"
+    if keep:
+        best, last_label = summary, label
+    else:
+        harness_revert(paths)
+    state = load_state(paths)
+    state["removal_trials"] = sorted(set(state.get("removal_trials", [])) | {unit["key"]})
+    save_state(paths, state)
+    log_event(paths, kind="candidate", gen=gen, change=change, harness=sha, removal=True,
+              score=summary, kept=keep, reason=reason)
+    out(f"  {'KEPT' if keep else 'REVERTED'} ({reason}): {change}\n{_fmt(summary)}")
+    return best, last_label
 
 
 def _change_line(text):

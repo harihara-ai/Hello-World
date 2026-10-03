@@ -91,6 +91,9 @@ Notes on choices the spec leaves open:
 - **Overfitting guard.** A change whose added lines name code identifiers from training bug reports
   (snake_case, dotted, `called()`, or `quoted` names) is reverted unscored. Names the Observer recorded in
   `facts.md` count as general knowledge, not leaks.
+- **Removal trials.** Every `ablate_every` generations (default 3), instead of asking the Evolver for an
+  addition, SEED deletes one harness piece: a CLAUDE.md paragraph or a file. It keeps the deletion if the
+  score is no worse. Each piece is tried once (again if its content changes). Without this, harnesses only grow.
 - **Confirmation is the verdict.** The ratchet keeps whatever scored best, so its logged scores are biased
   upward. `seed confirm` runs plain Claude Code and the final harness fresh, `confirm_runs` times each
   (default 3), on held-out tasks only. It compares pass rates task by task and runs an exact sign test.

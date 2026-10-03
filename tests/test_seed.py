@@ -162,7 +162,8 @@ class EndToEnd(unittest.TestCase):
         cfg.update(test_cmd=f"{sys.executable} -m unittest {{tests}}",
                    regression_cmd=f"{sys.executable} -m unittest discover -s tests -t .",
                    agent_cmd=[sys.executable, str(ROOT / "tests" / "fake_agent.py"), "{prompt_file}"],
-                   baseline_runs=1, heldout_fraction=0.0, min_net_flips=1, confirm_runs=2)
+                   baseline_runs=1, heldout_fraction=0.0, min_net_flips=1, confirm_runs=2,
+                   ablate_every=0)
         self.paths.config.write_text(json.dumps(cfg))
 
     def tearDown(self):
@@ -246,6 +247,20 @@ class EndToEnd(unittest.TestCase):
         summary, _ = rescore(self.repo, self.paths, cfg, load_tasks(self.paths), "baseline")
         self.assertEqual([(old, new) for _, _, old, new in summary["changed"]], [("PASS", "REGRESSION")])
         self.assertEqual(summary["all"]["passed"], 1)
+
+    def test_removal_trials_strip_pieces_that_do_not_help(self):
+        self.mine()
+        cfg = dict(json.loads(self.paths.config.read_text()), ablate_every=1)
+        self.plan.write_text("noop")
+        quiet(loop.run_baseline, self.repo, self.paths, cfg)
+        quiet(loop.run_build, self.repo, self.paths, cfg)  # v0 adds CLAUDE.md + scripts/, neither helps
+        quiet(loop.run_evolve, self.repo, self.paths, cfg, 3)
+        removals = [e for e in loop.read_log(self.paths) if e.get("removal")]
+        self.assertEqual([e["kept"] for e in removals], [True, True])
+        self.assertTrue(all(e["reason"] == "simpler, no worse" for e in removals))
+        left = {p.relative_to(self.paths.harness).as_posix() for p in self.paths.harness.rglob("*")
+                if p.is_file() and ".git" not in p.parts}
+        self.assertEqual(left, {"facts.md"})
 
     def test_tampered_judge_refuses_to_score(self):
         self.mine()
