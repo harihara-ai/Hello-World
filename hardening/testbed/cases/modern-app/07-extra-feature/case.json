@@ -1,0 +1,3 @@
+{"trap": 7, "critical": true, "title": "change sneaks in a newsletter signup",
+ "run": "gate_check", "stage": "done", "change": "openspec/changes/CART-3-bulk-discount", "expect_fail": ["diff_scope"],
+ "patch": {"openspec/changes/CART-3-bulk-discount/inputs/diff_scope.json": [["\"tests/test_cart.py\"], \"impact_scan\"", "\"tests/test_cart.py\", \"src/newsletter.py\"], \"impact_scan\""]]}}

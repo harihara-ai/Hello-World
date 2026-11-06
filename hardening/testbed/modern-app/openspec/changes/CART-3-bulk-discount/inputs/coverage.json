@@ -1,0 +1,2 @@
+{"changed_lines": {"src/cart.py": [10, 11, 12, 13, 14]}, "covered_lines": {"src/cart.py": [10, 11, 12, 13, 14]},
+ "baseline_total": 88.0, "current_total": 89.2}

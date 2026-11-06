@@ -1,0 +1,2 @@
+{"trap": 13, "critical": true, "title": "clean bulk-discount change passes ready and done",
+ "run": "gate_check", "stage": "both", "change": "openspec/changes/CART-3-bulk-discount", "expect_fail": []}

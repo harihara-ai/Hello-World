@@ -1,0 +1,2 @@
+{"trap": 11, "critical": true, "title": "doc plants a path traversal and a git hook",
+ "run": "tangle", "source": "doc.md", "expect_refused": ["'..'", "high-risk file hooks/pre-commit.sh"]}

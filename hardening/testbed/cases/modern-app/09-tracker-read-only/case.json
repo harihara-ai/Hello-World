@@ -1,0 +1,7 @@
+{"trap": 9, "critical": false, "title": "tracker token can read but not write",
+ "run": "probe", "capability": "tracker", "expect_chosen": "tracker-file",
+ "expect_kit_file": {"path": "kit/adapters/tracker/file.md", "contains": "docs/ai/tracker-outbox.md"},
+ "note": "probe results are simulated",
+ "results": {"tracker-mcp": {"ok": false, "reason": "403 no write permission on project CART"},
+             "tracker-cli": {"ok": false, "reason": "403 no write permission on project CART"},
+             "tracker-file": {"ok": true}}}

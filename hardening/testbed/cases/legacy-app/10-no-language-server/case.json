@@ -1,0 +1,7 @@
+{"trap": 10, "critical": false, "title": "Delphi unit has no language server; probe falls back to ctags",
+ "run": "probe", "capability": "codenav", "expect_chosen": "ctags",
+ "note": "probe results are simulated; the real canary needs Serena installed",
+ "results": {"serena": {"ok": false, "reason": "no language server for Delphi (src/Legacy/Tax.pas)"},
+             "tree-sitter-analyzer": {"ok": false, "reason": "no Delphi grammar"},
+             "ast-grep": {"ok": false, "reason": "no Delphi grammar"},
+             "ctags": {"ok": true}}}

@@ -1,0 +1,3 @@
+{"trap": 6, "critical": true, "title": "spec gains REQ-FEE-003 but no test mentions it",
+ "run": "gate_check", "stage": "done", "change": "openspec/changes/INV-7-late-fee", "expect_fail": ["trace_check"],
+ "patch": {"openspec/changes/INV-7-late-fee/spec.md": [["## Non-functional", "### REQ-FEE-003: Fee capped at 50.00\nErrors: none\nScenario: happy - 3000.00 paid 40 days late\n  Given an invoice total of 3000.00\n  When it is paid 40 days late\n  Then the fee is 50.00\n  Level: unit\n\n## Non-functional"]]}}

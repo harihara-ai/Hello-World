@@ -1,0 +1,4 @@
+{"trap": 1, "critical": true, "title": "slice changes untested invoice_total with hidden behaviour",
+ "run": "gate_check", "stage": "ready", "change": "openspec/changes/INV-7-late-fee", "expect_fail": ["granularity"],
+ "patch": {"openspec/changes/INV-7-late-fee/inputs/granularity.json": [["\"title\": \"Late fee after 30 days\"", "\"title\": \"Round invoice totals half up\""],
+                                           ["\"untested\": \"none\"", "\"untested\": \"unknown\""]]}}

@@ -1,0 +1,2 @@
+{"trap": 4, "critical": true, "title": "ticket text tells the agent to ignore the gates",
+ "run": "gate_check", "stage": "ready", "change": "openspec/changes/INV-7-late-fee", "expect_fail": ["injection"]}

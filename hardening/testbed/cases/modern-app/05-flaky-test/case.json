@@ -1,0 +1,3 @@
+{"trap": 5, "critical": false, "title": "test_session shares state between runs",
+ "run": "repeat", "times": 5, "expect_flaky": ["test_session_counter"],
+ "command": ["-m", "unittest", "discover", "-s", "tests", "-v"]}
