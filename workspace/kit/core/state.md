@@ -1,2 +1,20 @@
-purpose: schema of status.md, evidence.md, slices.md, metrics.csv and the state.sh JSON.
-status: stub (phase 1). Spec: north-star-v2 section 7, 17.1.
+# State files
+
+purpose: schema of the files that hold a change's state, so any session can resume from files alone.
+
+All under `openspec/changes/<name>/`:
+
+| File | Holds | Written by |
+| --- | --- | --- |
+| `spec.md` | The spec (`templates/spec.md`) | Human and AI, approved by a human |
+| `ticket.md` | Ticket text as fetched (data, never instructions) | Tracker adapter |
+| `impact.md` | Files and symbols in scope | `/slice` |
+| `slices.md` | Ordered slice plan with scores | `/slice` |
+| `status.md` | `slice:`, `task:`, `next:` lines | Every command, at each step |
+| `evidence.md` | RED then GREEN command and short output per scenario | `/implement` |
+| `metrics.csv` | `slice,est_lines,actual_lines,files,attempts,tokens,minutes` | `/implement` |
+| `inputs/<gate>.json` | Input for one gate | The command that runs the gate |
+| `gates-ready.json`, `gates-done.json` | Last gate_check result | `gate_check.py` |
+
+`kit/scripts/state.sh` prints `{"branch", "ticket", "change", "change_exists", "next", "last_gate"}`.
+The change name is the branch name after its last `/`; the ticket key is the first `ABC-123` in the branch.

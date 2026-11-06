@@ -1,2 +1,17 @@
-# purpose: default floor thresholds; repos may raise, lowering needs a recorded human sign-off.
-# status: stub (phase 1). Spec: north-star-v2 section 10.6, 11.3, 16.2.
+# purpose: default floor thresholds; repos may raise them, lowering needs a recorded human sign-off.
+# Prefix rule (read by gate.policy_guard): min_* may only go up, max_* may only go down,
+# list values may only grow. Copy to docs/ai/policy.yml in the target repo.
+version: 1
+min_changed_line_coverage: 80
+max_slice_scenarios: [3, 5]
+max_slice_modules: [1, 2]
+max_slice_contracts: [0, 1]
+max_slice_symbols: [8, 15]
+max_slice_lines: [150, 300]
+max_slice_files: [8, 15]
+max_task_attempts: 3
+max_spec_lines: 300
+min_flaky_runs: 3
+banned_words: [fast, easy, user-friendly, secure, robust, simple, quick, intuitive, scalable, flexible]
+ready_gates: [injection, spec_lint, granularity]
+done_gates: [injection, trace_check, coverage, diff_scope, policy_guard]
