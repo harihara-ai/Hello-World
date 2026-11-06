@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""purpose: safely extract `file=<path>` fenced blocks from markdown sources into a workspace.
+
+Writes files only. Never executes, imports or chmods +x anything.
+Usage:
+  tangle.py SOURCE_FILE_OR_DIR LOCKFILE OUTDIR [--pin] [--check] [--approve-high-risk]
+Exit 0 = ok, 1 = refused (nothing written).
+"""
+import argparse
+import hashlib
+import os
+import re
+import sys
+
+ALLOWED_EXT = {".md", ".yml", ".yaml", ".json", ".sh", ".py", ".txt", ".feature", ".toml"}
+HIGH_RISK_PREFIXES = (".claude/settings", ".github/", ".husky/", "hooks/", ".git/")
+HIGH_RISK_NAMES = ("install.sh", "setup.sh", "postinstall", "preinstall")
+FENCE = re.compile(r"^(`{3,}|~{3,})(.*)$")
+FILE_ATTR = re.compile(r"(?:^|\s)file=(\S+)")
+
+
+def parse_blocks(text, origin):
+    lines = text.split("\n")
+    blocks, i = [], 0
+    while i < len(lines):
+        m = FENCE.match(lines[i])
+        if not m:
+            i += 1
+            continue
+        fence, info = m.group(1), m.group(2).strip()
+        closer = re.compile(r"^" + re.escape(fence[0]) + "{" + str(len(fence)) + r",}\s*$")
+        j, body = i + 1, []
+        while j < len(lines) and not closer.match(lines[j]):
+            body.append(lines[j])
+            j += 1
+        fm = FILE_ATTR.search(info)
+        if fm:
+            blocks.append({"path": fm.group(1), "content": "\n".join(body) + "\n",
+                           "origin": "%s:%d" % (origin, i + 1)})
+        i = j + 1
+    return blocks
+
+
+def collect_sources(src):
+    if os.path.isdir(src):
+        found = []
+        for root, _dirs, files in os.walk(src):
+            for f in files:
+                if f.endswith(".md"):
+                    found.append(os.path.join(root, f))
+        return sorted(found)
+    return [src]
+
+
+def path_problems(path):
+    bad = []
+    if not path or path != path.strip():
+        return ["empty or padded path"]
+    if path.startswith("/") or re.match(r"^[A-Za-z]:", path):
+        bad.append("absolute path")
+    if "\\" in path:
+        bad.append("backslash in path")
+    if any(ord(c) < 32 for c in path):
+        bad.append("control character in path")
+    parts = path.split("/")
+    if any(p in ("..", ".", "") for p in parts):
+        bad.append("'..', '.' or empty path segment")
+    if any(p.startswith("~") for p in parts):
+        bad.append("'~' segment")
+    ext = os.path.splitext(path)[1].lower()
+    if ext not in ALLOWED_EXT:
+        bad.append("extension %r not allowed" % ext)
+    return bad
+
+
+def is_high_risk(path):
+    base = os.path.basename(path).lower()
+    return path.startswith(HIGH_RISK_PREFIXES) or any(n in base for n in HIGH_RISK_NAMES)
+
+
+def sha(content):
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def load_lock(path):
+    lock = {}
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    digest, _, p = line.partition("  ")
+                    lock[p] = digest
+    return lock
+
+
+def under_symlink(outdir, rel):
+    cur = outdir
+    for part in rel.split("/"):
+        cur = os.path.join(cur, part)
+        if os.path.islink(cur):
+            return True
+    return False
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("source")
+    ap.add_argument("lock")
+    ap.add_argument("outdir")
+    ap.add_argument("--pin", action="store_true", help="write the lock file (human approval step)")
+    ap.add_argument("--check", action="store_true", help="verify only, write nothing")
+    ap.add_argument("--approve-high-risk", action="store_true")
+    a = ap.parse_args()
+
+    blocks = []
+    for s in collect_sources(a.source):
+        with open(s, encoding="utf-8") as fh:
+            blocks += parse_blocks(fh.read(), s)
+
+    errors, seen = [], {}
+    for b in blocks:
+        for p in path_problems(b["path"]):
+            errors.append("%s: %s (%s)" % (b["origin"], p, b["path"]))
+        if b["path"] in seen:
+            errors.append("%s: duplicate path %s (also at %s)" % (b["origin"], b["path"], seen[b["path"]]))
+        seen[b["path"]] = b["origin"]
+        if is_high_risk(b["path"]) and not a.approve_high_risk:
+            errors.append("%s: high-risk file %s needs --approve-high-risk" % (b["origin"], b["path"]))
+    if errors:
+        print("REFUSED:\n  " + "\n  ".join(errors))
+        return 1
+
+    new = {b["path"]: sha(b["content"]) for b in blocks}
+    old = load_lock(a.lock)
+
+    if a.pin:
+        added = sorted(set(new) - set(old))
+        removed = sorted(set(old) - set(new))
+        changed = sorted(p for p in new if p in old and new[p] != old[p])
+        with open(a.lock, "w", encoding="utf-8") as fh:
+            fh.write("# sha256  path  (written by tangle.py --pin; review this diff before committing)\n")
+            for p in sorted(new):
+                fh.write("%s  %s\n" % (new[p], p))
+        print("PINNED %d files. added=%d changed=%d removed=%d" % (len(new), len(added), len(changed), len(removed)))
+        for tag, items in (("added", added), ("changed", changed), ("removed", removed)):
+            for p in items:
+                print("  %s: %s" % (tag, p))
+        return 0
+
+    problems = []
+    for p in sorted(new):
+        if p not in old:
+            problems.append("unpinned: %s" % p)
+        elif old[p] != new[p]:
+            problems.append("changed since pin: %s" % p)
+    for p in sorted(set(old) - set(new)):
+        problems.append("in lock but missing from source: %s" % p)
+    if problems:
+        print("REFUSED (lock mismatch; a human must review and run --pin):\n  " + "\n  ".join(problems))
+        return 1
+
+    if a.check:
+        print("OK: %d files match the lock" % len(new))
+        return 0
+
+    outdir = os.path.realpath(a.outdir)
+    os.makedirs(outdir, exist_ok=True)
+    for b in blocks:
+        if under_symlink(outdir, b["path"]):
+            print("REFUSED: symlink in path %s" % b["path"])
+            return 1
+    for b in blocks:
+        target = os.path.realpath(os.path.join(outdir, b["path"]))
+        if not target.startswith(outdir + os.sep):
+            print("REFUSED: path escapes workspace %s" % b["path"])
+            return 1
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        with open(target, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(b["content"])
+        os.chmod(target, 0o644)
+    print("TANGLED %d files into %s" % (len(blocks), a.outdir))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
