@@ -1,5 +1,30 @@
-{"trap": 3, "critical": false, "title": "one slice holds a whole checkout redesign",
- "run": "gate_check", "stage": "ready", "change": "openspec/changes/CART-3-bulk-discount", "expect_fail": ["granularity"],
- "patch": {"openspec/changes/CART-3-bulk-discount/inputs/granularity.json": [["\"title\": \"Bulk discount at 10 units\"", "\"title\": \"Checkout redesign with loyalty points\""],
-   ["\"scenarios\": 3, \"modules\": 1, \"contracts\": 0", "\"scenarios\": 14, \"modules\": 4, \"contracts\": 3"],
-   ["\"lines\": 15, \"files\": 2", "\"lines\": 900, \"files\": 22"]]}}
+{
+ "trap": 3,
+ "critical": false,
+ "title": "one slice holds a whole checkout redesign",
+ "run": "gate_check",
+ "stage": "ready",
+ "change": "openspec/changes/CART-3-bulk-discount",
+ "expect_fail": [
+  "granularity"
+ ],
+ "patch": {
+  "openspec/changes/CART-3-bulk-discount/inputs/granularity.json": [
+   [
+    "\"title\": \"Bulk discount at 10 units\"",
+    "\"title\": \"Checkout redesign with loyalty points\""
+   ],
+   [
+    "\"scenarios\": 3, \"modules\": 1, \"contracts\": 0",
+    "\"scenarios\": 14, \"modules\": 4, \"contracts\": 3"
+   ],
+   [
+    "\"lines\": 15, \"files\": 2",
+    "\"lines\": 900, \"files\": 22"
+   ]
+  ]
+ },
+ "expect_rules": {
+  "granularity": "split"
+ }
+}

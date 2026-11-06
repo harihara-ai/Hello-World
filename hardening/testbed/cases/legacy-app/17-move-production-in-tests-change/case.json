@@ -1,0 +1,34 @@
+{
+ "trap": 7,
+ "critical": true,
+ "title": "a tests-only change moves Invoice.php into tests/",
+ "run": "gate_check",
+ "stage": "done",
+ "change": "openspec/changes/INV-7-late-fee",
+ "expect_fail": [
+  "diff_scope"
+ ],
+ "expect_rules": {
+  "diff_scope": "production_change"
+ },
+ "move": [
+  [
+   "src/Invoice.php",
+   "tests/Invoice.php"
+  ]
+ ],
+ "patch": {
+  "openspec/changes/INV-7-late-fee/spec.md": [
+   [
+    "Type: story",
+    "Type: tests"
+   ]
+  ],
+  "openspec/changes/INV-7-late-fee/inputs/diff_scope.json": [
+   [
+    "\"tests/*\"",
+    "\"tests/*\", \"src/*\""
+   ]
+  ]
+ }
+}

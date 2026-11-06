@@ -1,0 +1,22 @@
+{
+ "trap": 6,
+ "critical": true,
+ "title": "REQ-CART-002 test removed; the ID survives only in a source docstring",
+ "run": "gate_check",
+ "stage": "done",
+ "change": "openspec/changes/CART-3-bulk-discount",
+ "expect_fail": [
+  "trace_check"
+ ],
+ "expect_rules": {
+  "trace_check": "untested"
+ },
+ "patch": {
+  "tests/test_cart.py": [
+   [
+    "    def test_REQ_CART_002_nine_units_no_discount(self):  # REQ-CART-002\n        self.assertEqual(cart.bulk_discount([{\"price\": 10.0, \"qty\": 9}]), 0.0)\n",
+    ""
+   ]
+  ]
+ }
+}

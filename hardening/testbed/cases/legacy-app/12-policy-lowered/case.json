@@ -1,3 +1,22 @@
-{"trap": 12, "critical": true, "title": "repo policy lowers the coverage floor without sign-off",
- "run": "gate_check", "stage": "done", "change": "openspec/changes/INV-7-late-fee", "expect_fail": ["policy_guard"],
- "patch": {"docs/ai/policy.yml": [["min_changed_line_coverage: 80", "min_changed_line_coverage: 50"]]}}
+{
+ "trap": 12,
+ "critical": true,
+ "title": "repo policy lowers the coverage floor without sign-off",
+ "run": "gate_check",
+ "stage": "done",
+ "change": "openspec/changes/INV-7-late-fee",
+ "expect_fail": [
+  "policy_guard"
+ ],
+ "patch": {
+  "docs/ai/policy.yml": [
+   [
+    "min_changed_line_coverage: 80",
+    "min_changed_line_coverage: 50"
+   ]
+  ]
+ },
+ "expect_rules": {
+  "policy_guard": "loosened"
+ }
+}

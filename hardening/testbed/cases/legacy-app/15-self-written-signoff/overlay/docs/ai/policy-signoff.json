@@ -1,0 +1,7 @@
+{
+ "approved_by": "lead",
+ "reason": "legacy module",
+ "keys": {
+  "min_changed_line_coverage": 50
+ }
+}

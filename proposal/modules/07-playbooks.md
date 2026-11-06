@@ -55,14 +55,12 @@ purpose: steps for a story, enhancement or NFR, from ticket to merged PR.
 1. **Intake.** `read_ticket` (capability.tracker). Save the text to `ticket.md`. Create branch `feature/<KEY>-<slug>` and the change folder.
 2. **Learn if needed.** If a touched module has no card in `docs/ai/modules/`, run `/learn <module>`.
 3. **Spec.** Draft `spec.md` from `kit/templates/spec.md`. Concrete values, one behaviour per scenario, an error case per requirement. NFRs carry a number.
-4. **Impact scan.** codenav `impact` per requirement. Write `impact.md` and `inputs/diff_scope.json` (`impact_scan` globs).
-5. **Slice.** `/slice`: write `slices.md` and `inputs/granularity.json`. Untested code in scope gets Slice 0 (characterization only).
-6. **G1.** `gate_check.py ready`. Fix and re-run until green. Then the human approves spec and slice plan. Record the approval in `status.md`.
-7. **Build.** `/implement` per slice, in order.
-8. **G4.** Write `inputs/coverage.json` from the coverage tool, then `gate_check.py done`. Write the trace table into the PR (`kit/templates/pr.md`).
-9. **Hand over.** Open the PR, `comment` on the ticket with REQ IDs and the PR link. The human reviews and merges.
+4. **Slice and G1.** `/slice` (impact scan, slice plan, `gate_check.py ready`). Untested code in scope gets Slice 0 (characterization only). The human approves spec and plan; record it in `status.md`.
+5. **Build.** `/implement` per slice, in order.
+6. **G4.** Run the tests with coverage, point `inputs/coverage.json` at the report, then `gate_check.py done`. Write the trace table into the PR (`kit/templates/pr.md`).
+7. **Hand over.** Open the PR, `comment` on the ticket with REQ IDs and the PR link. The human reviews and merges.
 
-Stop signals: a failed gate after 3 attempts, files outside the impact scan, or a diff over the slice cap. Go back to step 5.
+Stop signals: a failed gate after 3 attempts, files outside the impact scan, or a diff over the slice cap. Go back to step 4.
 ````
 
 ## playbook.bug
@@ -77,7 +75,7 @@ purpose: steps for a bug or production hotfix: reproduce with a failing test fir
 1. **Intake.** `read_ticket`. Save `ticket.md`. Branch `fix/<KEY>-<slug>`.
 2. **Reproduce.** Write one failing test that shows the bug. Record RED in `evidence.md`. No fix before RED.
 3. **Spec.** If the behaviour was never specified, add a requirement with a REQ ID. The regression test carries that ID.
-4. **G1.** `gate_check.py ready`. A hotfix may skip slicing (one slice) but not the gate.
+4. **G1.** `gate_check.py ready`. A hotfix skips `/slice` but still writes a one-slice `inputs/granularity.json` and `inputs/diff_scope.json`, then runs the gate.
 5. **Fix.** Smallest change that turns the test GREEN. Note the root cause in `evidence.md`.
 6. **G4.** `gate_check.py done`, unchanged for hotfixes: the done gate is never relaxed.
 7. **Hotfix follow-up.** Add a retro-spec within 5 working days and record it as a `next:` line in `status.md`.
@@ -93,7 +91,7 @@ Section 8.
 purpose: steps for a chore or refactor where behaviour must stay identical.
 
 1. **Goal and non-goal.** Write both in `spec.md` (Type: chore or refactor). No new requirement.
-2. **Pin behaviour.** Characterization tests for every unit in scope. Green before any change; commit them alone, prefixed `CHAR:`.
+2. **Pin behaviour.** Characterization tests for every unit the impact scan lists. Green before any change; commit them alone, prefixed `CHAR:`.
 3. **Measure before.** Record size, complexity or coupling of the touched files in `evidence.md`.
 4. **Change.** Small steps, characterization tests green after each.
 5. **Measure after.** Record the same numbers. A refactor must improve at least one and worsen none.
@@ -110,13 +108,15 @@ Section 16.
 purpose: build regression tests for a named scope in risk order, without touching production code.
 
 1. **Scope.** Write `safety-net/<scope>/scope.md`: module, feature, journey or the area of a change.
-2. **Inventory.** Run existing tests 3 times. Save the runs as `inputs/flaky.json`. Run `gate.flaky`; quarantine flaky tests with a ticket.
+2. **Inventory.** Run existing tests 3 times. Save the runs as `inputs/flaky.json`. Run `gate.flaky`. Quarantine a flaky test by listing it with its ticket in `docs/ai/quarantine.md` and tagging it (`@Disabled`, `[Trait("quarantine")]`, `#[Group]`).
 3. **Gap.** Score each unit for risk: churn, past defects, complexity, contract exposure, `docs/ai/critical-journeys.md`. Tier 1 to 4.
-4. **Plan.** Cheapest test level per risk. Untested legacy code gets characterization tests first.
+4. **Plan.** Cheapest test level per risk. Untested legacy code gets characterization tests first: prefer a golden master at the outermost seam (ApprovalTests, Verify, snapshot of the rendered output).
+   Scrub nondeterminism before comparing: timestamps, GUIDs, `now()`, random seeds, machine paths.
+   No seam without a production edit? That edit is its own chore change (behaviour-neutral, human-approved), merged first.
 5. **Gherkin.** Draft from code, the running app and tickets, tagged `inferred`. A human confirms; then add REQ IDs and tags.
 6. **Automate.** One framework per repo; feature, step, keyword, page-object and driver layers. No fixed sleeps.
 7. **Stabilise.** Run each new test 5 times. `gate.flaky` must pass.
-8. **Done.** `gate_check.py done --also flaky` with `"no_production": true` in `inputs/diff_scope.json`, so any production file fails `gate.diff_scope`.
+8. **Done.** Spec `Type: tests`. `gate_check.py done` then adds `gate.flaky` and forbids production changes by itself.
 ````
 
 ## playbook.spike

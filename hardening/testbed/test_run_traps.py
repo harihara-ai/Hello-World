@@ -41,6 +41,14 @@ class RunTraps(unittest.TestCase):
         self.assertEqual(self.rc, 0)
         self.assertEqual(self.out["score"]["false_alarms"], 0)
 
+    def test_rules_are_checked_not_only_gates(self):
+        self.assertTrue(any("expect_rules" in json.load(open(c)) for c in
+                            __import__("glob").glob(os.path.join(HERE, "cases", "*", "*", "case.json"))))
+
+    def test_git_mode_is_used(self):
+        clean = [c for c in self.out["cases"] if c["trap"] == 13]
+        self.assertTrue(all("git" in c["detail"] for c in clean), clean)
+
     def test_broken_kit_is_caught(self):
         kit = os.path.join(tempfile.mkdtemp(), "ws")
         shutil.copytree(WS, kit)

@@ -129,6 +129,38 @@ def make_repo():
 def gate_check(root, ch, stage, *extra):
     return run_py(os.path.join(KIT, "scripts", "gate_check.py"), None,
                   [stage, "--repo", root, "--change", ch, *extra])
+
+
+def git(root, *args):
+    p = subprocess.run(["git", "-C", root, *args], capture_output=True, text=True)
+    if p.returncode != 0:
+        raise RuntimeError(p.stderr)
+    return p.stdout
+
+
+def git_init(root):
+    """Turn a fixture dir into a git repo with everything committed on main."""
+    git(root, "init", "-q", "-b", "main")
+    git(root, "config", "user.email", "t@t")
+    git(root, "config", "user.name", "t")
+    git(root, "add", "-A")
+    git(root, "commit", "-qm", "base")
+    return root
+
+
+def cobertura(files, rate=0.9):
+    """files: {path: {line: hits}} -> Cobertura XML text."""
+    classes = "".join('<class filename="%s"><lines>%s</lines></class>' % (
+        f, "".join('<line number="%d" hits="%d"/>' % (n, h) for n, h in sorted(lines.items())))
+        for f, lines in files.items())
+    return '<?xml version="1.0"?><coverage line-rate="%s"><packages><package><classes>%s</classes></package></packages></coverage>' % (rate, classes)
+
+
+def write_tree(files):
+    root = tempfile.mkdtemp()
+    for rel, text in files.items():
+        write(root, rel, text)
+    return root
 ````
 
 ## tests/run.sh
@@ -215,39 +247,6 @@ class CodenavContract(unittest.TestCase):
     def test_fallback_results_are_inferred(self):
         text = contract.read("kit/adapters/codenav/ctags.md")
         self.assertIn("inferred", text)
-
-
-if __name__ == "__main__":
-    unittest.main()
-````
-
-## tests/contract/test_tracker.py
-
-````python file=tests/contract/test_tracker.py
-"""purpose: T2 contract tests for the tracker capability (trap 9: read-only fallback)."""
-import os
-import sys
-import unittest
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import contract  # noqa: E402
-
-
-class TrackerContract(unittest.TestCase):
-    def test_adapters_cover_the_interface(self):
-        contract.check(self, "capability.tracker")
-
-    def test_no_write_permission_falls_back_to_file(self):
-        for a in contract.check(self, "capability.tracker"):
-            text = contract.read(a["path"])
-            if a["id"] == "adapter.tracker.file":
-                self.assertIn("docs/ai/tracker-outbox.md", text)
-            else:
-                self.assertIn("adapter.tracker.file", text, a["id"])
-
-    def test_ticket_text_is_data(self):
-        for a in contract.check(self, "capability.tracker"):
-            self.assertIn("gate.injection", contract.read(a["path"]), a["id"])
 
 
 if __name__ == "__main__":

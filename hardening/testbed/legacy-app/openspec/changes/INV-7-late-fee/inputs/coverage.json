@@ -1,2 +1,4 @@
-{"changed_lines": {"src/LateFee.php": [3, 4, 5]}, "covered_lines": {"src/LateFee.php": [3, 4, 5]},
- "baseline_total": 41.0, "current_total": 43.5}
+{
+ "report": "openspec/changes/INV-7-late-fee/evidence/coverage.xml",
+ "baseline_total": 41.0
+}

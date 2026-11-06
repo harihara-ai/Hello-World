@@ -26,6 +26,10 @@ Paths and dependencies only. Hashes live in kit.lock (written by tangle --pin).
   type: core
   path: kit/core/policy.yml
   needs: []
+- id: core.install
+  type: core
+  path: kit/INSTALL.md
+  needs: []
 - id: capability.tracker
   type: capability
   path: kit/capabilities/tracker.md
@@ -73,7 +77,7 @@ Paths and dependencies only. Hashes live in kit.lock (written by tangle --pin).
 - id: gate.spec_lint
   type: gate
   path: kit/gates/spec_lint.py
-  needs: [script.gateio, core.policy]
+  needs: [script.gateio, core.policy, script.kitconst]
 - id: gate.granularity
   type: gate
   path: kit/gates/granularity.py
@@ -85,15 +89,15 @@ Paths and dependencies only. Hashes live in kit.lock (written by tangle --pin).
 - id: gate.trace
   type: gate
   path: kit/gates/trace_check.py
-  needs: [script.gateio, core.policy]
+  needs: [script.gateio, core.policy, script.kitconst]
 - id: gate.coverage
   type: gate
   path: kit/gates/coverage.py
-  needs: [script.gateio, core.policy]
+  needs: [script.gateio, core.policy, script.kitconst, script.cov_import]
 - id: gate.diff_scope
   type: gate
   path: kit/gates/diff_scope.py
-  needs: [script.gateio, core.policy]
+  needs: [script.gateio, core.policy, script.kitconst]
 - id: gate.policy_guard
   type: gate
   path: kit/gates/policy_guard.py
@@ -106,6 +110,14 @@ Paths and dependencies only. Hashes live in kit.lock (written by tangle --pin).
   type: script
   path: kit/scripts/gateio.py
   needs: [core.rules]
+- id: script.kitconst
+  type: script
+  path: kit/scripts/kitconst.py
+  needs: [core.rules]
+- id: script.cov_import
+  type: script
+  path: kit/scripts/cov_import.py
+  needs: [core.rules]
 - id: script.policy
   type: script
   path: kit/scripts/policy.py
@@ -113,7 +125,7 @@ Paths and dependencies only. Hashes live in kit.lock (written by tangle --pin).
 - id: script.gate_check
   type: script
   path: kit/scripts/gate_check.py
-  needs: [script.policy, core.policy]
+  needs: [script.policy, script.kitconst, core.policy]
 - id: script.state
   type: script
   path: kit/scripts/state.sh

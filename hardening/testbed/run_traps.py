@@ -2,7 +2,8 @@
 """purpose: run every seeded trap case against a tangled kit and score blocked traps and false alarms.
 
 Usage: run_traps.py [--kit workspace] [--json]
-Each case copies its repo to a temp dir, applies overlay/ files and string patches, then runs the real kit.
+Each case copies its repo to a temp dir, commits a base without the repo's change files (testbed.json), puts
+the change back, applies overlay/ files, string patches and moves, then runs the real kit in git mode.
 Exit 0 when every case behaves as expected, 1 otherwise. Writes nothing inside the repo.
 """
 import argparse
@@ -20,13 +21,28 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 PY = [sys.executable, "-I", "-B"]
 
 
+def git(tmp, *args):
+    subprocess.run(["git", "-C", tmp, "-c", "user.email=t@t", "-c", "user.name=t", *args],
+                   capture_output=True, text=True, check=True)
+
+
 def prepare(repo, case_dir, case, kit):
     tmp = os.path.join(tempfile.mkdtemp(prefix="trap-"), "repo")
     shutil.copytree(os.path.join(HERE, repo), tmp)
+    aside = os.path.join(os.path.dirname(tmp), "aside")
+    with open(os.path.join(tmp, "testbed.json"), encoding="utf-8") as fh:
+        change_files = json.load(fh)["change_files"]
     policy = os.path.join(tmp, "docs", "ai", "policy.yml")
     if not os.path.isfile(policy):
         os.makedirs(os.path.dirname(policy), exist_ok=True)
         shutil.copy(os.path.join(kit, "kit", "core", "policy.yml"), policy)
+    for rel in change_files:
+        os.makedirs(os.path.dirname(os.path.join(aside, rel)), exist_ok=True)
+        shutil.move(os.path.join(tmp, rel), os.path.join(aside, rel))
+    git(tmp, "init", "-q", "-b", "main")
+    git(tmp, "add", "-A")
+    git(tmp, "commit", "-qm", "base")
+    shutil.copytree(aside, tmp, dirs_exist_ok=True)
     overlay = os.path.join(case_dir, "overlay")
     if os.path.isdir(overlay):
         shutil.copytree(overlay, tmp, dirs_exist_ok=True)
@@ -40,12 +56,15 @@ def prepare(repo, case_dir, case, kit):
             text = text.replace(old, new)
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(text)
+    for src, dst in case.get("move", []):
+        os.makedirs(os.path.dirname(os.path.join(tmp, dst)), exist_ok=True)
+        os.rename(os.path.join(tmp, src), os.path.join(tmp, dst))
     return tmp
 
 
 def run_gate_check(tmp, case, kit):
     stages = ["ready", "done"] if case["stage"] == "both" else [case["stage"]]
-    failed = []
+    failed, found = [], {}
     for stage in stages:
         p = subprocess.run(PY + [os.path.join(kit, "kit/scripts/gate_check.py"), stage, "--repo", tmp,
                                  "--change", case["change"]], capture_output=True, text=True)
@@ -54,12 +73,17 @@ def run_gate_check(tmp, case, kit):
         except ValueError:
             return False, "gate_check gave no JSON: %s" % (p.stdout + p.stderr)[-300:]
         failed += ["%s:%s" % (stage, g["gate"]) for g in out["gates"] if not g["pass"]]
+        for g in out["gates"]:
+            found.setdefault(g["gate"], set()).update(f["rule"] for f in g.get("findings", []))
     names = {f.split(":")[1] for f in failed}
     expected = set(case["expect_fail"])
+    rules = case.get("expect_rules", {})
+    rules_ok = all(r in found.get(g, set()) for g, r in rules.items())
     if not expected:
-        return not failed, "false alarm: %s" % failed if failed else "clean: all gates pass"
-    ok = expected <= names
-    return ok, "failed gates: %s" % (failed or "none")
+        ok = not failed and rules_ok
+        return ok, "git: " + ("false alarm: %s" % failed if failed else "all gates pass") + (
+            "; flagged %s" % rules if rules else "")
+    return expected <= names and rules_ok, "git: failed gates %s; rules %s" % (failed or "none", rules or "-")
 
 
 def run_probe(tmp, case, kit):

@@ -1,4 +1,26 @@
-{"trap": 8, "critical": true, "title": "change leaves new lines uncovered and lowers overall coverage",
- "run": "gate_check", "stage": "done", "change": "openspec/changes/INV-7-late-fee", "expect_fail": ["coverage"],
- "patch": {"openspec/changes/INV-7-late-fee/inputs/coverage.json": [["\"covered_lines\": {\"src/LateFee.php\": [3, 4, 5]}", "\"covered_lines\": {\"src/LateFee.php\": [3]}"],
-                                        ["\"current_total\": 43.5", "\"current_total\": 39.0"]]}}
+{
+ "trap": 8,
+ "critical": true,
+ "title": "change leaves new lines uncovered and lowers overall coverage",
+ "run": "gate_check",
+ "stage": "done",
+ "change": "openspec/changes/INV-7-late-fee",
+ "expect_fail": [
+  "coverage"
+ ],
+ "patch": {
+  "openspec/changes/INV-7-late-fee/evidence/coverage.xml": [
+   [
+    "<line number=\"5\" hits=\"2\"/>",
+    "<line number=\"5\" hits=\"0\"/>"
+   ],
+   [
+    "line-rate=\"0.435\"",
+    "line-rate=\"0.390\""
+   ]
+  ]
+ },
+ "expect_rules": {
+  "coverage": "changed_lines"
+ }
+}
