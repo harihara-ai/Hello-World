@@ -11,4 +11,4 @@ open_blockers: unknown
 open_majors: unknown
 consecutive_clean_rounds: 0
 doc_revision_synced: not synced
-notes: phase 0 confirmed by human (round cap 6, Silver, synthetic test bed, no budget cap; ralph.sh has no budget check). Keep governance minimal. Phase 1: modules split (42 stub components), lint clean on scratch lock; awaiting component-list approval and first pin.
+notes: phase 0 confirmed (round cap 6, Silver, synthetic test bed, no budget cap; ralph.sh has no budget check). Keep governance minimal. Phase 1 approved and pinned (43 stubs). Phase 2 built in source: 44 components + tests, 86 tests green on scratch tangle, lint clean; waiting for human pin of phase 2 diff.

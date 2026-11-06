@@ -2,9 +2,9 @@ purpose: working source for kit.manifest.yml, the registry the Genie reads first
 
 # Manifest
 
-Paths and dependencies only. Hashes live in kit.lock (written by tangle --pin), not here.
+Paths and dependencies only. Hashes live in kit.lock (written by tangle --pin).
 
-```yaml file=kit.manifest.yml
+````yaml file=kit.manifest.yml
 # purpose: registry of every kit component; kit_lint checks it.
 - id: core.claude
   type: core
@@ -73,39 +73,47 @@ Paths and dependencies only. Hashes live in kit.lock (written by tangle --pin), 
 - id: gate.spec_lint
   type: gate
   path: kit/gates/spec_lint.py
-  needs: [core.policy]
+  needs: [script.gateio, core.policy]
 - id: gate.granularity
   type: gate
   path: kit/gates/granularity.py
-  needs: [core.policy]
-- id: gate.trace
-  type: gate
-  path: kit/gates/trace_check.sh
-  needs: [core.policy]
-- id: gate.diff_scope
-  type: gate
-  path: kit/gates/diff_scope.py
-  needs: [core.policy]
-- id: gate.coverage
-  type: gate
-  path: kit/gates/coverage.py
-  needs: [core.policy]
-- id: gate.policy_guard
-  type: gate
-  path: kit/gates/policy_guard.py
-  needs: [core.policy]
+  needs: [script.gateio, core.policy]
 - id: gate.injection
   type: gate
   path: kit/gates/injection.py
-  needs: [core.rules]
+  needs: [script.gateio, core.rules]
+- id: gate.trace
+  type: gate
+  path: kit/gates/trace_check.py
+  needs: [script.gateio, core.policy]
+- id: gate.coverage
+  type: gate
+  path: kit/gates/coverage.py
+  needs: [script.gateio, core.policy]
+- id: gate.diff_scope
+  type: gate
+  path: kit/gates/diff_scope.py
+  needs: [script.gateio, core.policy]
+- id: gate.policy_guard
+  type: gate
+  path: kit/gates/policy_guard.py
+  needs: [script.gateio, script.policy, core.policy]
 - id: gate.flaky
   type: gate
   path: kit/gates/flaky.py
+  needs: [script.gateio, core.policy]
+- id: script.gateio
+  type: script
+  path: kit/scripts/gateio.py
+  needs: [core.rules]
+- id: script.policy
+  type: script
+  path: kit/scripts/policy.py
   needs: [core.policy]
 - id: script.gate_check
   type: script
   path: kit/scripts/gate_check.py
-  needs: [core.policy]
+  needs: [script.policy, core.policy]
 - id: script.state
   type: script
   path: kit/scripts/state.sh
@@ -113,7 +121,7 @@ Paths and dependencies only. Hashes live in kit.lock (written by tangle --pin), 
 - id: script.probe
   type: script
   path: kit/scripts/probe.py
-  needs: [core.state]
+  needs: [script.gateio, core.state]
 - id: playbook.router
   type: playbook
   path: kit/playbooks/router.md
@@ -121,23 +129,23 @@ Paths and dependencies only. Hashes live in kit.lock (written by tangle --pin), 
 - id: playbook.story
   type: playbook
   path: kit/playbooks/story.md
-  needs: [capability.tracker, gate.spec_lint, gate.granularity, core.rules]
+  needs: [capability.tracker, capability.codenav, gate.spec_lint, gate.granularity, script.gate_check, core.rules]
 - id: playbook.bug
   type: playbook
   path: kit/playbooks/bug.md
-  needs: [capability.tracker, gate.trace, core.rules]
+  needs: [capability.tracker, gate.trace, script.gate_check, core.rules]
 - id: playbook.no_behaviour_change
   type: playbook
   path: kit/playbooks/no-behaviour-change.md
-  needs: [gate.diff_scope, core.rules]
+  needs: [gate.diff_scope, script.gate_check, core.rules]
 - id: playbook.safety_net
   type: playbook
   path: kit/playbooks/safety-net.md
-  needs: [gate.flaky, gate.diff_scope, core.rules]
+  needs: [gate.flaky, gate.diff_scope, script.gate_check, core.rules]
 - id: playbook.spike
   type: playbook
   path: kit/playbooks/spike.md
-  needs: [core.rules]
+  needs: [gate.diff_scope, core.rules]
 - id: command.genie
   type: command
   path: kit/.claude/commands/genie.md
@@ -186,4 +194,4 @@ Paths and dependencies only. Hashes live in kit.lock (written by tangle --pin), 
   type: template
   path: kit/templates/pr.md
   needs: [core.glossary]
-```
+````
