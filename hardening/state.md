@@ -1,6 +1,6 @@
 purpose: loop state read at the start of every round.
 
-round: 0
+round: 1 (frozen at a5d992e)
 phase: 4
 certification_target: Silver
 round_cap: 6
