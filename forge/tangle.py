@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """purpose: safely extract `file=<path>` fenced blocks from markdown sources into a workspace.
 
-Writes files only. Never executes, imports or chmods +x anything.
-Usage:
-  tangle.py SOURCE_FILE_OR_DIR LOCKFILE OUTDIR [--pin] [--check] [--approve-high-risk]
-Exit 0 = ok, 1 = refused (nothing written).
+Writes files only; never executes, imports or chmods +x anything. Exit 0 ok, 1 refused (nothing written).
+Usage: tangle.py SOURCE_FILE_OR_DIR LOCKFILE OUTDIR [--pin] [--check] [--approve-high-risk]
 """
 import argparse
 import hashlib
@@ -13,17 +11,24 @@ import re
 import sys
 
 ALLOWED_EXT = {".md", ".yml", ".yaml", ".json", ".sh", ".py", ".txt", ".feature", ".toml"}
-HIGH_RISK_PREFIXES = (".claude/settings", ".github/", ".husky/", "hooks/", ".git/")
-HIGH_RISK_NAMES = ("install.sh", "setup.sh", "postinstall", "preinstall")
+HIGH_RISK_DIRS = {".github", ".husky", "hooks", ".git", ".vscode", ".idea", ".gitlab"}
+HIGH_RISK_NAMES = ("install.sh", "setup.sh", "postinstall", "preinstall", ".mcp.json", "conftest.py",
+                   ".pre-commit-config.yaml", ".gitlab-ci.yml")
 FENCE = re.compile(r"^(`{3,}|~{3,})(.*)$")
 FILE_ATTR = re.compile(r"(?:^|\s)file=(\S+)")
 
 
 def parse_blocks(text, origin):
     lines = text.split("\n")
-    blocks, i = [], 0
+    blocks, i, in_comment = [], 0, False
     while i < len(lines):
-        m = FENCE.match(lines[i])
+        line = lines[i]
+        opens = "<!--" in line and "-->" not in line.split("<!--", 1)[1]
+        if in_comment or opens:
+            in_comment = ("-->" not in line) if in_comment else True
+            i += 1
+            continue
+        m = FENCE.match(line)
         if not m:
             i += 1
             continue
@@ -42,14 +47,9 @@ def parse_blocks(text, origin):
 
 
 def collect_sources(src):
-    if os.path.isdir(src):
-        found = []
-        for root, _dirs, files in os.walk(src):
-            for f in files:
-                if f.endswith(".md"):
-                    found.append(os.path.join(root, f))
-        return sorted(found)
-    return [src]
+    if not os.path.isdir(src):
+        return [src]
+    return sorted(os.path.join(r, f) for r, _d, files in os.walk(src) for f in files if f.endswith(".md"))
 
 
 def path_problems(path):
@@ -74,8 +74,26 @@ def path_problems(path):
 
 
 def is_high_risk(path):
-    base = os.path.basename(path).lower()
-    return path.startswith(HIGH_RISK_PREFIXES) or any(n in base for n in HIGH_RISK_NAMES)
+    parts = path.lower().split("/")
+    return (any(p in HIGH_RISK_DIRS for p in parts[:-1]) or any(n in parts[-1] for n in HIGH_RISK_NAMES)
+            or any(a == ".claude" and b.startswith("settings") for a, b in zip(parts, parts[1:])))
+
+
+def workspace_problems(outdir, lock):
+    found, problems = set(), []
+    for root, dirs, files in os.walk(outdir):
+        dirs[:] = [d for d in dirs if d != "__pycache__"]
+        for f in files:
+            rel = os.path.relpath(os.path.join(root, f), outdir).replace(os.sep, "/")
+            found.add(rel)
+            with open(os.path.join(root, f), encoding="utf-8", errors="replace") as fh:
+                digest = sha(fh.read())
+            if rel not in lock:
+                problems.append("workspace file not in lock: %s" % rel)
+            elif lock[rel] != digest:
+                problems.append("workspace file changed by hand: %s" % rel)
+    problems += ["workspace file missing: %s" % p for p in sorted(set(lock) - found)]
+    return problems
 
 
 def sha(content):
@@ -95,12 +113,8 @@ def load_lock(path):
 
 
 def under_symlink(outdir, rel):
-    cur = outdir
-    for part in rel.split("/"):
-        cur = os.path.join(cur, part)
-        if os.path.islink(cur):
-            return True
-    return False
+    parts = rel.split("/")
+    return any(os.path.islink(os.path.join(outdir, *parts[:k])) for k in range(1, len(parts) + 1))
 
 
 def main():
@@ -145,31 +159,30 @@ def main():
         print("PINNED %d files. added=%d changed=%d removed=%d" % (len(new), len(added), len(changed), len(removed)))
         for tag, items in (("added", added), ("changed", changed), ("removed", removed)):
             for p in items:
-                print("  %s: %s" % (tag, p))
+                print("  %s: %s%s" % (tag, p, "  HIGH-RISK" if is_high_risk(p) else ""))
         return 0
 
-    problems = []
-    for p in sorted(new):
-        if p not in old:
-            problems.append("unpinned: %s" % p)
-        elif old[p] != new[p]:
-            problems.append("changed since pin: %s" % p)
-    for p in sorted(set(old) - set(new)):
-        problems.append("in lock but missing from source: %s" % p)
+    problems = ["unpinned: %s" % p for p in sorted(new) if p not in old]
+    problems += ["changed since pin: %s" % p for p in sorted(new) if p in old and old[p] != new[p]]
+    problems += ["in lock but missing from source: %s" % p for p in sorted(set(old) - set(new))]
     if problems:
         print("REFUSED (lock mismatch; a human must review and run --pin):\n  " + "\n  ".join(problems))
         return 1
 
     if a.check:
+        ws = workspace_problems(a.outdir, old) if os.path.isdir(a.outdir) else []
+        if ws:
+            print("REFUSED (workspace does not match the lock; re-run tangle):\n  " + "\n  ".join(ws))
+            return 1
         print("OK: %d files match the lock" % len(new))
         return 0
 
     outdir = os.path.realpath(a.outdir)
     os.makedirs(outdir, exist_ok=True)
-    for b in blocks:
-        if under_symlink(outdir, b["path"]):
-            print("REFUSED: symlink in path %s" % b["path"])
-            return 1
+    linked = [b["path"] for b in blocks if under_symlink(outdir, b["path"])]
+    if linked:
+        print("REFUSED: symlink in path %s" % linked)
+        return 1
     for b in blocks:
         target = os.path.realpath(os.path.join(outdir, b["path"]))
         if not target.startswith(outdir + os.sep):

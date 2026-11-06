@@ -100,6 +100,44 @@ class TangleTests(unittest.TestCase):
         rc, out = self.tangle()
         self.assertEqual(rc, 1, out)
 
+    def test_nested_high_risk_needs_flag(self):
+        for path in ("kit/.claude/settings.json", "kit/hooks/pre-commit.sh", "kit/.github/workflows/ci.yml",
+                     "kit/.mcp.json", "tests/conftest.py", ".vscode/tasks.json", "kit/.husky/pre-push.sh"):
+            self.write(block(path, "{}"))
+            rc, out = self.pin()
+            self.assertEqual(rc, 1, path)
+            self.assertIn("high-risk", out)
+            rc, out = self.pin("--approve-high-risk")
+            self.assertEqual(rc, 0, path)
+            self.assertIn("HIGH-RISK", out)
+
+    def test_fence_inside_html_comment_ignored(self):
+        self.write("<!--\n" + block("kit/hidden.sh", "echo hi") + "-->\n" + block("kit/a.md"))
+        rc, out = self.pin()
+        self.assertEqual(rc, 0, out)
+        self.assertNotIn("kit/hidden.sh", open(self.lock).read())
+
+    def test_check_detects_workspace_tampering(self):
+        self.write(block("kit/a.md", "purpose: a"))
+        self.pin()
+        self.assertEqual(self.tangle()[0], 0)
+        self.assertEqual(self.tangle("--check")[0], 0)
+        os.makedirs(os.path.join(self.out, "kit", "__pycache__"))
+        with open(os.path.join(self.out, "kit", "__pycache__", "x.pyc"), "w") as fh:
+            fh.write("ignored")
+        self.assertEqual(self.tangle("--check")[0], 0)
+        with open(os.path.join(self.out, "kit", "a.md"), "a") as fh:
+            fh.write("edited by hand\n")
+        rc, out = self.tangle("--check")
+        self.assertEqual(rc, 1)
+        self.assertIn("workspace file changed", out)
+        self.tangle()
+        with open(os.path.join(self.out, "kit", "planted.py"), "w") as fh:
+            fh.write("x = 1\n")
+        rc, out = self.tangle("--check")
+        self.assertEqual(rc, 1)
+        self.assertIn("not in lock", out)
+
 
 MANIFEST_OK = """\
 - id: core.glossary

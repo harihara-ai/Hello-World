@@ -27,7 +27,12 @@ stage_lint() {
   python3 -I forge/kit_lint.py "$WS" "$WS/kit.manifest.yml"
 }
 
+stage_verify() {
+  python3 -I forge/tangle.py "$SRC" "$LOCK" "$WS" --check
+}
+
 stage_selftest() {
+  stage_verify
   python3 -I -m unittest discover -s forge/tests
   if [ -f "$WS/tests/run.sh" ]; then bash "$WS/tests/run.sh"; fi
 }
@@ -42,6 +47,7 @@ stage_certify() {
 }
 
 stage_package() {
+  stage_verify
   mkdir -p dist
   [ -f hardening/evidence/EVIDENCE.md ] || echo "WARN: no evidence pack; package is UNCERTIFIED"
   out="dist/northstar-kit.zip"
