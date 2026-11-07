@@ -11,7 +11,8 @@ import re
 import sys
 
 ALLOWED_EXT = {".md", ".yml", ".yaml", ".json", ".sh", ".py", ".txt", ".feature", ".toml"}
-HIGH_RISK_DIRS = {".github", ".husky", "hooks", ".git", ".vscode", ".idea", ".gitlab"}
+# Files that steer an agent, run code on checkout or in CI; keep in step with kit/scripts/kitconst.py PROTECTED.
+HIGH_RISK_DIRS = {".github", ".husky", "hooks", ".git", ".vscode", ".idea", ".gitlab", ".claude"}
 HIGH_RISK_NAMES = ("install.sh", "setup.sh", "postinstall", "preinstall", ".mcp.json", "conftest.py",
                    ".pre-commit-config.yaml", ".gitlab-ci.yml")
 FENCE = re.compile(r"^(`{3,}|~{3,})(.*)$")
@@ -23,9 +24,8 @@ def parse_blocks(text, origin):
     blocks, i, in_comment = [], 0, False
     while i < len(lines):
         line = lines[i]
-        opens = "<!--" in line and "-->" not in line.split("<!--", 1)[1]
-        if in_comment or opens:
-            in_comment = ("-->" not in line) if in_comment else True
+        was, in_comment = in_comment, comment_after(line, in_comment)
+        if was or in_comment:
             i += 1
             continue
         m = FENCE.match(line)
@@ -46,6 +46,14 @@ def parse_blocks(text, origin):
     return blocks
 
 
+def comment_after(line, in_c):
+    """HTML comment state at the end of a line; fences inside comments are not tangled."""
+    i = 0
+    while (j := line.find("-->" if in_c else "<!--", i)) >= 0:
+        in_c, i = not in_c, j + 3
+    return in_c
+
+
 def collect_sources(src):
     if not os.path.isdir(src):
         return [src]
@@ -53,30 +61,21 @@ def collect_sources(src):
 
 
 def path_problems(path):
-    bad = []
     if not path or path != path.strip():
         return ["empty or padded path"]
-    if path.startswith("/") or re.match(r"^[A-Za-z]:", path):
-        bad.append("absolute path")
-    if "\\" in path:
-        bad.append("backslash in path")
-    if any(ord(c) < 32 for c in path):
-        bad.append("control character in path")
-    parts = path.split("/")
-    if any(p in ("..", ".", "") for p in parts):
-        bad.append("'..', '.' or empty path segment")
-    if any(p.startswith("~") for p in parts):
-        bad.append("'~' segment")
-    ext = os.path.splitext(path)[1].lower()
-    if ext not in ALLOWED_EXT:
-        bad.append("extension %r not allowed" % ext)
-    return bad
+    parts, ext = path.split("/"), os.path.splitext(path)[1].lower()
+    checks = [(path.startswith("/") or re.match(r"^[A-Za-z]:", path), "absolute path"),
+              ("\\" in path, "backslash in path"), (any(ord(c) < 32 for c in path), "control character in path"),
+              (any(p in ("..", ".", "") for p in parts), "'..', '.' or empty path segment"),
+              (any(p.startswith("~") for p in parts), "'~' segment"),
+              (ext not in ALLOWED_EXT, "extension %r not allowed" % ext)]
+    return [msg for bad, msg in checks if bad]
 
 
 def is_high_risk(path):
     parts = path.lower().split("/")
     return (any(p in HIGH_RISK_DIRS for p in parts[:-1]) or any(n in parts[-1] for n in HIGH_RISK_NAMES)
-            or any(a == ".claude" and b.startswith("settings") for a, b in zip(parts, parts[1:])))
+            or parts[-1] == "claude.md")
 
 
 def workspace_problems(outdir, lock):
@@ -86,8 +85,8 @@ def workspace_problems(outdir, lock):
         for f in files:
             rel = os.path.relpath(os.path.join(root, f), outdir).replace(os.sep, "/")
             found.add(rel)
-            with open(os.path.join(root, f), encoding="utf-8", errors="replace") as fh:
-                digest = sha(fh.read())
+            with open(os.path.join(root, f), "rb") as fh:
+                digest = hashlib.sha256(fh.read()).hexdigest()
             if rel not in lock:
                 problems.append("workspace file not in lock: %s" % rel)
             elif lock[rel] != digest:

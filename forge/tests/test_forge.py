@@ -138,6 +138,30 @@ class TangleTests(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("not in lock", out)
 
+    def test_agent_steering_files_are_high_risk(self):
+        for path in ("kit/.claude/commands/genie.md", "kit/CLAUDE.md", "kit/sub/CLAUDE.md"):
+            self.write(block(path, "x"))
+            rc, out = self.pin()
+            self.assertEqual(rc, 1, path)
+
+    def test_fence_after_reopened_comment_ignored(self):
+        self.write("<!-- a --> text <!--\n" + block("kit/hidden.sh", "echo hi") + "-->\n" + block("kit/a.md"))
+        rc, out = self.pin()
+        self.assertEqual(rc, 0, out)
+        self.assertNotIn("kit/hidden.sh", open(self.lock).read())
+
+    def test_check_hashes_bytes(self):
+        self.write(block("kit/a.sh", "set -e\necho ok"))
+        self.pin()
+        self.tangle()
+        p = os.path.join(self.out, "kit", "a.sh")
+        with open(p, "rb") as fh:
+            raw = fh.read()
+        with open(p, "wb") as fh:
+            fh.write(raw.replace(b"\n", b"\r", 1))
+        rc, out = self.tangle("--check")
+        self.assertEqual(rc, 1, out)
+
 
 MANIFEST_OK = """\
 - id: core.glossary
