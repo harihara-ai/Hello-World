@@ -141,6 +141,16 @@ class GitMode(unittest.TestCase):
         self.assertIn("bytecode_added", rules(out))
 
 
+    def test_change_folder_allows_only_plan_and_evidence_files(self):
+        ch = "openspec/changes/X-1"
+        ok = [ch + f for f in ("/spec.md", "/inputs/diff_scope.json", "/evidence/coverage.xml", "/gates-done.json")]
+        rc, _, log = scope(ok + ["src/a.py"], ["src/a.py"], change_dir=ch)
+        self.assertEqual(rc, 0, log)
+        for bad in ("/testing-notes.txt", "/evidence/notes.txt", "/run.sh", "/inputs/x.yml"):
+            rc, out, _ = scope([ch + bad, "src/a.py"], ["src/a.py"], change_dir=ch)
+            self.assertIn("code_in_change_folder", rules(out), bad)
+
+
 if __name__ == "__main__":
     unittest.main()
 ````

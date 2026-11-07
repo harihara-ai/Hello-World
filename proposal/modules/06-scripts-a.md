@@ -83,6 +83,9 @@ PROTECTED = ["docs/ai/policy.yml", "docs/ai/policy-signoff.json", "kit/*", "kit.
              "jest.config.*", "codecov.yml", ".codecov.yml"]
 COVERAGE_IGNORE = ["pragma: no cover", "@codecoverageignore", "excludefromcodecoverage", "istanbul ignore",
                    "c8 ignore", "coverage:ignore", "lcov_excl", "@generated"]
+# The only files a change folder may hold (an allowlist: runners pick up other files, e.g. pytest doctests in *.txt).
+CHANGE_FOLDER_FILES = ["*.md", "inputs/*.json", "gates-*.json", "evidence/*.xml", "evidence/*.json", "evidence/*.info",
+                       "evidence/*.png", "evidence/*.jpg", "evidence/*.svg", "evidence/*.pdf"]
 SKIP_DIRS = {".git", "node_modules", "vendor", "openspec", "docs", "kit", "dist", "build", "bin", "obj",
              "__pycache__", ".venv", "venv", "target"}
 CODE_EXT = (".py", ".php", ".java", ".kt", ".cs", ".vb", ".js", ".ts", ".tsx", ".jsx", ".go", ".rb",

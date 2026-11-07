@@ -7,7 +7,7 @@ round_cap: 6
 trap_score: 21/21 cases (critical 16/16, other 5/5, false alarms 0) on pinned workspace
 trap_target: all critical, 95 percent others
 new_findings_threshold: 2 per round
-open_blockers: 3 (L01, L02, L03) and 1 major (L04) open at the round cap
+open_blockers: 0 open; L01-L04 fixed after the cap, pending pin, not swarm-reviewed
 open_majors: deferred G19 (symbol-level scope), G20 (no-coverage stacks), F17; G18 in part
 consecutive_clean_rounds: 0 (round 6 had 3 blockers; cap reached)
 doc_revision_synced: not synced (write-back list in findings.md)
