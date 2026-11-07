@@ -114,3 +114,19 @@ the coverage API in a test file. (b) Reuse the coverage gate's existing changed-
 fail on coverage-tool API tokens in changed test files; cheap, catches the plain form, not obfuscation.
 confidence: high (Python, coverage.py); other stacks not run
 ```
+
+## Fix plan items 1c (M02, option b) and 4 (L06 batch): RED then GREEN (scratch kit, not yet pinned)
+1c: changed code lines (tests too) that call the coverage tool fail `coverage_api_in_change` (kitconst.COVERAGE_API,
+reusing the coverage gate's existing changed-line scan). RED: new unit test `test_coverage_api_in_changed_code_fails`
+-> `'coverage_api_in_change' not found in set() : tests/test_price.py`, FAILED (failures=1). GREEN: unit 170 OK.
+4: orphan_id warning removed (R1 N1). RED: `test_ids_of_other_changes_are_not_reported` -> `[{'rule': 'orphan_id' ...}] != []`.
+GREEN after the change. INSTALL wording: CI jobs in the install PR (R4), never evidence.md in a plan PR (R1 N2),
+Delphi takes no file list (R3-6-02), keep CI helpers tracked or outside the checkout (R3-6-01).
+Scratch kit: lint 49 clean; unit 170, contract 5, mutation 14 OK; run_traps 5 runs, each
+`22/22 cases; critical 17/17; other 5/5; false alarms 0`. Two-job CI walk-through: f0 blocked (changed_lines),
+f1 blocked (`coverage_api_in_change`), f2 (`__import__("cover" + "age")`) PASSES: the known gap of option b, left to
+review. plan, a0, s1 pass; t0-t4, d1 blocked; a0 report has no orphan_id.
+Scratch pin: changed=6 (kit/INSTALL.md, kit/gates/coverage.py, kit/gates/trace_check.py, kit/scripts/kitconst.py,
+all high-risk; tests/unit/test_coverage.py, tests/unit/test_trace_check.py).
+Not run: the COVERAGE_API patterns on real PHP (xdebug/pcov), Java (JaCoCo), JS (istanbul) or .NET (coverlet) runs;
+false alarms on repos whose own code legitimately imports coverage (a failed gate is never waived).

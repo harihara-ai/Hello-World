@@ -83,6 +83,8 @@ PROTECTED = ["docs/ai/policy.yml", "docs/ai/policy-signoff.json", "kit/*", "kit.
              "jest.config.*", "codecov.yml", ".codecov.yml"]
 COVERAGE_IGNORE = ["pragma: no cover", "@codecoverageignore", "excludefromcodecoverage", "istanbul ignore",
                    "c8 ignore", "coverage:ignore", "lcov_excl", "@generated"]
+# Code that writes the coverage tool's own data could mark any line as run (M02). Fails on any changed code line.
+COVERAGE_API = re.compile(r"\b(?:import|from)\s+coverage\b|__coverage__|\bxdebug_|\bpcov\\|org\.jacoco|\bcoverlet\b", re.I)
 # The only files a change folder may hold (an allowlist: runners pick up other files, e.g. pytest doctests in *.txt).
 CHANGE_FOLDER_FILES = ["*.md", "inputs/*.json", "gates-*.json", "evidence/*.xml", "evidence/*.json", "evidence/*.info",
                        "evidence/*.png", "evidence/*.jpg", "evidence/*.svg", "evidence/*.pdf"]

@@ -67,7 +67,6 @@ def check(p):
     if not n:
         return [finding("no_test_files", "no test files found (see kitconst.TEST_GLOBS)")], {}
     f = [finding("untested", "%s has no test" % i, i) for i in sorted(ids - tested)]
-    f += [finding("orphan_id", "tests mention %s, which is in no spec here" % i, i, "warn") for i in sorted(tested - ids)]
     return f, {"requirements": sorted(ids)}
 
 
@@ -85,7 +84,8 @@ Section 10.4 check 5. Trap 8. Reads the coverage report and git diff itself (rou
 
 In git: {"reports": [paths], "baseline_total": pct or "baseline_report": path, "base": ref}. gate_check fills
 these from its CI flags only, never from the change folder. The gate reads the reports and git diff itself; no
-production code changed means nothing to check; added coverage-ignore markers fail; a signed floor of 0 (a
+production code changed means nothing to check; added coverage-ignore markers and coverage-tool API calls (in any
+changed code, tests too) fail; a signed floor of 0 (a
 stack with no coverage tool) needs no report. Outside git only
 (fixtures): {changed_lines, covered_lines, baseline_total, current_total}.
 """
@@ -96,7 +96,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
 from gateio import UsageError, finding, run  # noqa: E402
 import cov_import  # noqa: E402
-from kitconst import CODE_EXT, COVERAGE_IGNORE, is_test_file  # noqa: E402
+from kitconst import CODE_EXT, COVERAGE_API, COVERAGE_IGNORE, is_test_file  # noqa: E402
 
 
 def in_git():
@@ -107,8 +107,8 @@ def in_git():
 def from_git(p):
     if "base" not in p:
         raise UsageError("need 'base' in a git repo")
-    code = {f: l for f, l in cov_import.changed_lines(p["base"]).items()
-            if not is_test_file(f) and f.lower().endswith(CODE_EXT)}
+    every = {f: l for f, l in cov_import.changed_lines(p["base"]).items() if f.lower().endswith(CODE_EXT)}
+    code = {f: l for f, l in every.items() if not is_test_file(f)}
     if not code:
         return [finding("nothing_to_check", "no production code changed", "", "warn")], None
     reports = p.get("reports") or []
@@ -117,12 +117,14 @@ def from_git(p):
     if not reports or ("baseline_total" not in p and "baseline_report" not in p):
         return [finding("report_required", "code changed: CI must pass --coverage-report and a baseline")], None
     f = []
-    for path, lines in code.items():
+    for path, lines in every.items():
         with open(path, encoding="utf-8", errors="replace") as fh:
-            text = fh.read().lower().splitlines()
-        for n in sorted(lines):
-            if n <= len(text) and any(m in text[n - 1] for m in COVERAGE_IGNORE):
+            text = fh.read().splitlines()
+        for n in [n for n in sorted(lines) if n <= len(text)]:
+            if path in code and any(m in text[n - 1].lower() for m in COVERAGE_IGNORE):
                 f.append(finding("coverage_exclusion_added", "added line %d hides code from coverage" % n, path))
+            if COVERAGE_API.search(text[n - 1]):
+                f.append(finding("coverage_api_in_change", "added line %d calls the coverage tool: code must not write its own coverage" % n, path))
     rep, changed, covered = cov_import.parse_reports(reports), {}, {}
     measured = {os.path.splitext(k)[1].lower() for k in rep["instrumented"]}
     for path, lines in code.items():

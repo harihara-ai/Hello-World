@@ -31,11 +31,11 @@ Start with item 1 and stop when it is done.
 | # | Issue | Fix | Value | Effort |
 | --- | --- | --- | --- | --- |
 | 1 | done: L01-L04 fixed after the cap, never reviewed | One short check: R2 and R5 only, re-run their round 6 attacks and the INSTALL walk-through. No full round | High: closes the only unreviewed blockers | Low (one session) |
-| 1c | M02: a PR's test forges coverage.py data; CI passes with an untested branch | Owner picks: accept as limit (J04 family), or reuse the coverage gate's COVERAGE_IGNORE scan to fail on coverage-API tokens in changed test files | High: coverage is a floor gate (traps 1, 8) | Low (decision; option b is a list and a test) |
+| 1c | source fixed (option b), pin awaits human. M02: a PR's test forges coverage.py data; CI passes with an untested branch | Owner picks: accept as limit (J04 family), or reuse the coverage gate's COVERAGE_IGNORE scan to fail on coverage-API tokens in changed test files | High: coverage is a floor gate (traps 1, 8) | Low (decision; option b is a list and a test) |
 | 1b | done, pinned. M01: PR tests plant a git hook or config that rewrites the approved kit (t2-t4) | INSTALL only: tests in one job, gate in a second job on a fresh runner that runs no PR code before gate_check. Pin needs a human | High: a blocker | Low (one INSTALL edit, re-run t2-t4) |
 | 2 | J04, J05: weak tests for new code, weakened edited tests | No new gate. In the pilot CI, run diff-scoped mutation testing on changed lines (mutmut, Stryker, PIT or Infection with a since-base option) for Tier 1 modules; report the score in the PR | High: the only real control for the top risk | Medium (CI step per stack) |
 | 3 | done, pinned. J06: coverage exclusions in build files | No new gate. Add `pyproject.toml`, `pom.xml`, `build.gradle`, `package.json`, `*.csproj` to CODEOWNERS in INSTALL so a human always reviews them | Medium | Very low (one INSTALL line) |
-| 4 | L06 minor wording, orphan_id noise, Delphi `{tests}` example | One small batch | Low-medium: removes friction for pilot teams | Low |
+| 4 | source fixed, pin awaits human. L06 minor wording, orphan_id noise, Delphi `{tests}` example | One small batch | Low-medium: removes friction for pilot teams | Low |
 | 5 | G24: install is about 6 manual steps | Make `forge.sh package` lay out files at repo-root paths so install is "unzip into the repo, then /bootstrap" | Medium: first impression of the pilot | Low-medium |
 | 6 | F17: slice sizes are estimates | Wait for pilot metrics; if slices overrun, derive `files` from the impact scan | Low until data shows it | Deferred |
 | 7 | G19: unrequested function inside an in-scope file | Wait; AI review covers it; revisit only if the pilot shows escapes | Low until data shows it | Deferred |
@@ -48,10 +48,12 @@ Do 1c and 4 before the pilot (1, 1b, 3 done) (about one session). Do 2 and 5 whi
 | CI recipe (two jobs, artifact, required checks, branch protection) on a hosted CI | the gate that counts was only hand-simulated | pilot setup, first thing; blocks Gold |
 | Self-hosted runner reuse between jobs | M01 returns on a persistent runner | pilot setup, if a pilot repo uses one |
 | Test tools installed "as ../approved declares them" (npm, Maven, Composer) | PR install scripts run before the gate | pilot setup, per stack |
-| Coverage forging on PHP, Java, .NET, JS stacks (M02 shown on Python only) | coverage gate open on those stacks | with item 1c |
+| Coverage forging on PHP, Java, .NET, JS stacks; COVERAGE_API patterns untested there | coverage gate open on those stacks | pilot, per stack |
+| Obfuscated coverage-API use (f2 passes) | coverage forged past the gate | accepted gap: AI test review and human review |
+| False alarms from COVERAGE_API on repos whose code imports coverage | blocked change, no waiver | pilot; widen only on evidence |
 | Coverage settings in Maven, Gradle, npm, dotnet files (item 3 lists them untested) | an unlisted file hides exclusions | pilot, per stack |
 | PATH and other user-level plants beyond ~/.gitconfig | same as M01 on a reused runner | covered by a fresh runner; recheck only if runners are reused |
-| run_traps 5x since the after-cap pins (1 run each time) | repeatability unproven after changes | before rebuilding the package |
+| run_traps 5x on the pinned kit (5x ran on the 1c+4 scratch kit) | repeatability after the pin | right after the 1c+4 pin |
 | `dist/northstar-kit.zip` rebuilt | package ships the old INSTALL (M01 open) | after item 4, before handing the kit to a pilot |
 | Agent-driven flows (Genie, commands) in automated scenario runs | only read and hand-run | pilot |
 | Real tracker and language-server probes; multi-vendor review round | simulated only | pilot |
