@@ -60,7 +60,8 @@ purpose: steps for a story, enhancement or NFR, from ticket to merged PR.
 6. **G4.** `gate_check.py done` with the coverage report and test command (see `/gate`). Write the trace table into the PR (`kit/templates/pr.md`).
 7. **Hand over.** Open the PR, `comment` on the ticket with REQ IDs and the PR link. The human reviews and merges.
 
-Stop signals: a failed gate after 3 attempts, files outside the impact scan, or a diff over the slice cap. Go back to step 4.
+Stop signals: a failed gate after 3 attempts, files outside the impact scan, or a diff over the slice cap.
+A merged plan cannot change: plan the rest in a new change folder (`<name>-2`) and its own plan PR.
 ````
 
 ## playbook.bug
@@ -70,15 +71,16 @@ Section 8.
 ````md file=kit/playbooks/bug.md
 # Playbook: bug and hotfix
 
-purpose: steps for a bug or production hotfix: reproduce with a failing test first, then fix.
+purpose: steps for a bug or production hotfix: a plan PR, then a code PR whose regression test fails first.
 
-1. **Intake.** `read_ticket`. Save `ticket.md`. Branch `fix/<KEY>-<slug>`.
-2. **Reproduce.** Write one failing test that shows the bug. Record RED in `evidence.md`. No fix before RED.
-3. **Spec.** If the behaviour was never specified, add a requirement with a REQ ID. The regression test carries that ID.
-4. **G1.** `gate_check.py ready`. A hotfix skips `/slice` but still writes a one-slice `inputs/granularity.json` and `inputs/diff_scope.json`, then runs the gate.
-5. **Fix.** Smallest change that turns the test GREEN. Note the root cause in `evidence.md`.
-6. **G4.** `gate_check.py done`, unchanged for hotfixes: the done gate is never relaxed.
-7. **Hotfix follow-up.** Add a retro-spec within 5 working days and record it as a `next:` line in `status.md`.
+1. **Intake.** `read_ticket`. Save `ticket.md`. Branch `fix/<KEY>-<slug>-plan`.
+2. **Plan PR.** Spec with a REQ ID for the broken behaviour (`Type: bug` or `hotfix`), a one-slice
+   `inputs/granularity.json` and `inputs/diff_scope.json`. `gate_check.py auto` runs ready; a human merges it.
+3. **Reproduce.** On `fix/<KEY>-<slug>` from the target: one failing test carrying the REQ ID. Record RED in `evidence.md`.
+4. **Fix.** Smallest change that turns the test GREEN. Note the root cause in `evidence.md`.
+5. **Done.** `gate_check.py auto` runs done, unchanged for hotfixes; `gate.red_check` confirms the test fails without the fix.
+6. **Hotfix merged at night with the check overridden** (`kit/INSTALL.md`): within 5 working days open a retro plan PR with
+   the spec and an `evidence.md` that names the merged commit. It passes ready and needs no code PR.
 ````
 
 ## playbook.no_behaviour_change

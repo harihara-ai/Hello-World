@@ -1,0 +1,14 @@
+{
+ "trap": 7,
+ "critical": true,
+ "title": "a conftest.py hidden in the change folder drops tests from the run",
+ "run": "gate_check",
+ "stage": "done",
+ "change": "openspec/changes/CART-3-bulk-discount",
+ "expect_fail": [
+  "diff_scope"
+ ],
+ "expect_rules": {
+  "diff_scope": "code_in_change_folder"
+ }
+}

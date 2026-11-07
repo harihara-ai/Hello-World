@@ -131,6 +131,16 @@ class GitMode(unittest.TestCase):
         self.assertIn("bytecode_added", rules(out))
 
 
+    def test_untracked_bytecode_from_the_test_step_is_ignored(self):
+        write(self.d, "src/__pycache__/a.cpython-313.pyc", "x")
+        rc, out, log = run_gate("diff_scope", {"base": "HEAD", "impact_scan": ["src/*"]}, cwd=self.d)
+        self.assertEqual(rc, 0, log)
+        write(self.d, "src/b.py", "2\n")
+        git(self.d, "add", "-f", "src/__pycache__/a.cpython-313.pyc")
+        rc, out, _ = run_gate("diff_scope", {"base": "HEAD", "impact_scan": ["src/*"]}, cwd=self.d)
+        self.assertIn("bytecode_added", rules(out))
+
+
 if __name__ == "__main__":
     unittest.main()
 ````

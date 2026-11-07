@@ -187,7 +187,7 @@ import re
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
 from gateio import UsageError, finding, run  # noqa: E402
-from kitconst import PROTECTED, is_production, matches  # noqa: E402
+from kitconst import CODE_EXT, PROTECTED, is_production, is_test_file, matches  # noqa: E402
 
 
 def in_git():
@@ -195,22 +195,24 @@ def in_git():
 
 
 def git_changed(base):
+    """(changed paths, untracked paths) since base."""
     if not re.fullmatch(r"[\w./~^@-]+", base) or base.startswith("-"):
         raise UsageError("bad base ref")
-    names = set()
+    out = []
     for cmd in (["git", "-c", "core.quotePath=false", "diff", "--no-ext-diff", "--name-only", "--no-renames", base, "--"],
                 ["git", "ls-files", "--others", "--exclude-standard"]):
-        out = subprocess.run(cmd, capture_output=True, text=True)
-        if out.returncode != 0:
-            raise UsageError("git failed: %s" % out.stderr.strip())
-        names |= {n for n in out.stdout.splitlines() if n}
-    return sorted(names)
+        p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if p.returncode != 0:
+            raise UsageError("git failed: %s" % p.stderr.strip())
+        out.append({n for n in p.stdout.splitlines() if n})
+    return sorted(out[0] | out[1]), out[1] - out[0]
 
 
 def check(p):
     f = []
+    untracked = set()
     if in_git() and "base" in p:
-        changed = git_changed(p["base"])
+        changed, untracked = git_changed(p["base"])
         if "changed_files" in p:
             f.append(finding("listed_files_ignored", "changed_files ignored; git diff is used", "", "warn"))
     elif "changed_files" in p:
@@ -218,13 +220,17 @@ def check(p):
     else:
         raise UsageError("need 'base' in a git repo, or 'changed_files' outside git")
     plan = set(p.get("plan_files", []))
-    f += [finding("plan_changed", "the approved plan changed after G1; change it in a new plan PR: %s" % c, c)
+    f += [finding("plan_changed", "the approved plan changed after G1; plan the change in a new change folder: %s" % c, c)
           for c in changed if c in plan]
     ch = p.get("change_dir", "").rstrip("/")
-    f += [finding("bytecode_added", "compiled bytecode cannot be reviewed: %s" % c, c)
-          for c in changed if c.endswith((".pyc", ".pyo")) or "__pycache__/" in c]
-    changed = [c for c in changed if not (ch and c.startswith(ch + "/"))]
+    pyc = [c for c in changed if c.endswith((".pyc", ".pyo")) or "__pycache__/" in c]
+    f += [finding("bytecode_added", "compiled bytecode cannot be reviewed: %s" % c, c) for c in pyc if c not in untracked]
+    changed = [c for c in changed if c not in pyc]  # untracked bytecode is the test step's own output
     f += [finding("protected_path", "a human changes this file in its own PR: %s" % c, c) for c in changed if matches(c, PROTECTED)]
+    if ch:
+        f += [finding("code_in_change_folder", "a change folder holds the plan and evidence, not code: %s" % c, c)
+              for c in changed if c.startswith(ch + "/") and (c.lower().endswith(CODE_EXT) or is_test_file(c.rsplit("/", 1)[-1]))]
+    changed = [c for c in changed if not (ch and c.startswith(ch + "/"))]
     scan = p.get("impact_scan", [])
     if not scan:
         return f + [finding("no_impact_scan", "no impact scan given")], {}

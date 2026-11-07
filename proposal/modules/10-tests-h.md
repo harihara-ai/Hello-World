@@ -80,6 +80,25 @@ class RedCheck(unittest.TestCase):
         self.assertIn("no_test_cmd", rules(out))
 
 
+    def test_moved_file_and_emptied_folder_are_restored(self):
+        write(self.d, "src/pkg/old.py", "x = 1\n")
+        git(self.d, "add", "-A"); git(self.d, "commit", "-qm", "pkg")
+        self.base = git(self.d, "rev-parse", "HEAD").strip()
+        import shutil
+        shutil.rmtree(os.path.join(self.d, "src/pkg"))
+        write(self.d, "src/newpkg/old.py", "x = 1\n")
+        self.change()
+        rc, out, log = self.red()
+        self.assertEqual(rc, 0, log)
+        self.assertFalse(os.path.exists(os.path.join(self.d, "src/pkg/old.py")))
+        self.assertTrue(os.path.exists(os.path.join(self.d, "src/newpkg/old.py")))
+
+    def test_runner_that_finds_no_tests_is_an_error(self):
+        self.change()
+        rc, out, _ = self.red(cmd=sys.executable + " -c 'import sys; sys.exit(5)'")
+        self.assertIn("runner_error", rules(out))
+
+
 if __name__ == "__main__":
     unittest.main()
 ````

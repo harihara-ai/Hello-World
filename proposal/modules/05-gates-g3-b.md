@@ -138,7 +138,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from gateio import UsageError, finding, run  # noqa: E402
 from kitconst import RED_TYPES, TEST_EXT, is_test_file  # noqa: E402
 
-ERRORS = {126, 127, -1}  # the runner did not start or timed out: not a test result
+ERRORS = {5, 126, 127, -1}  # no tests found (pytest 5), runner did not start, or timed out: not a test result
 
 
 def git(*args):
@@ -187,15 +187,18 @@ def check(p):
             if s == "A":
                 os.remove(f)
             else:
+                os.makedirs(os.path.dirname(f) or ".", exist_ok=True)
                 with open(f, "wb") as fh:
                     fh.write(git("show", "%s:%s" % (base, f)))
         on_base = run_tests(shlex.split(cmd))
     finally:
         for i, (s, f) in enumerate(prod):
+            saved = os.path.join(keep, str(i))
             if s == "D":
                 os.remove(f) if os.path.exists(f) else None
-            else:
-                shutil.copy2(os.path.join(keep, str(i)), f)
+            elif os.path.exists(saved):
+                os.makedirs(os.path.dirname(f) or ".", exist_ok=True)
+                shutil.copy2(saved, f)
         shutil.rmtree(keep, ignore_errors=True)
     if on_base in ERRORS:
         return [finding("runner_error", "the test command could not run (exit %d)" % on_base)], {"tests": tests}

@@ -14,7 +14,7 @@ Sections 10.1, 10.2. Format that gate.spec_lint reads.
 purpose: change spec skeleton checked by gate.spec_lint; replace every <placeholder>.
 
 Ticket: <KEY>
-Type: <story|bug|hotfix|chore|refactor|spike|nfr|docs|tests>
+Type: <story|bug|hotfix|chore|refactor|spike|nfr|tests>
 
 ## Problem
 <what is wrong today, with a concrete example>

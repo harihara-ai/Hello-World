@@ -112,7 +112,7 @@ def match(repo_path, report_paths):
     if not scored or scored[0][0] == 0 or (len(scored) > 1 and scored[1][0] == scored[0][0]):
         return None
     best_n, best = scored[0]
-    if best_n < 2 and "/" in best.replace("\\", "/").strip("/"):  # one shared file name across modules is not a match
+    if best_n < 2 and "/" in best.replace("\\", "/").strip("/") and "/" in repo_path:  # a shared file name alone is no match
         return None
     return best
 

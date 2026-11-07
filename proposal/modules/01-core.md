@@ -25,7 +25,7 @@ purpose: north star rules loaded in every session (L0). Short on purpose; detail
 - Files listed in `PROTECTED` (`kit/scripts/kitconst.py`) are changed only by humans, in their own PR.
 
 ## Flow per change (two PRs)
-1. Spec from `kit/templates/spec.md`, then `/slice`. Gate `ready` passes; open the plan PR. A human merging it is G1.
+1. Spec from `kit/templates/spec.md`, then `/slice`. Gate `ready` passes; open the plan PR. A human merging it is the approval (G1).
 2. On a new branch: `/implement`, one scenario per red-green cycle, evidence in `evidence.md`, at most 3 attempts.
 3. Gate `done` passes on the code PR (CI runs it with real coverage and the red check). A human merges; you never do.
 4. No code without a requirement, no requirement without a test, nothing the spec does not ask for.
@@ -71,7 +71,7 @@ purpose: shared terms used by every component; new terms are added here, not red
 | Task | One scenario, one red-green cycle |
 | Floor | Minimum bar in the kit's `policy.yml`. Repos may raise it, never lower it silently |
 | REQ ID | `REQ-<AREA>-<NNN>`, for example `REQ-BILL-004` |
-| Impact scan | List of files and symbols a change may touch (`impact.md`) |
+| Impact scan | Globs of files a change may touch (`inputs/diff_scope.json`, merged with the plan) |
 | Characterization test | Test that pins current behaviour of untested code before it changes |
 | Gate | Deterministic check, JSON in and JSON out. G1 ready, G2 slice ready, G3 slice done, G4 PR done |
 | observed / inferred / confirmed | Confidence of a fact. Only `confirmed` may become a spec |
@@ -109,7 +109,8 @@ All under `openspec/changes/<name>/`:
 `docs/ai/index.json` holds one entry per knowledge item (spec section 6):
 `{"id", "path", "kind", "purpose", "module", "module_paths": [globs], "confidence", "verified_sha", "depends_on", "est_tokens"}`.
 `/refresh` diffs each entry's `module_paths` since its `verified_sha`.
-The change name is the branch name after its last `/`; the ticket key is the first `ABC-123` in the branch.
+The change is the longest change folder name contained in the branch name (so `-plan` and `-code` branches both work);
+the ticket key is the first `ABC-123` in the branch.
 ````
 
 ## core.policy
@@ -153,6 +154,7 @@ purpose: the one place that says where kit files go in a target repo, what a hum
 2. Copy `kit/.claude/commands/*.md` to `.claude/commands/` (Claude Code reads commands only there).
 3. Add the line `@kit/CLAUDE.md` to the root `CLAUDE.md` (create it if missing).
 4. Needs `python3` (3.8 or later) and `git`. Nothing is installed; no hooks are added.
+   Add `__pycache__/` and `openspec/changes/*/gates-*.json` (local gate output) to `.gitignore`.
 5. A human merges this install PR (CI gates start with the next PR). Then run `/bootstrap`; it ends with its own PR.
 
 ## What a human protects
@@ -179,9 +181,13 @@ The gate picks the stage: ready for a plan PR (it may change only its change fol
 with no change folder passes only if it touches docs or human-owned files. Keep each run's coverage report as an
 artifact; the target's latest is the next baseline, so the base is never re-tested. `{tests}` in the test command
 is replaced by the changed test files. No coverage tool (Delphi): a signed `min_changed_line_coverage: 0`.
+When the install PR merges, run the tests with coverage on the target once and keep that report: it is the first baseline.
+`{tests}` examples: pytest `pytest {tests}`; PHPUnit `vendor/bin/phpunit {tests}`. Maven and dotnet take class names, so
+use the whole suite there.
 Make the job a required check.
 
-Hotfix at night: an admin merges with the check overridden, then the plan PR and the gates follow within 5 working days.
+Hotfix at night: an admin merges with the check overridden; within 5 working days a retro plan PR adds the spec and an
+`evidence.md` naming the merged commit (`kit/playbooks/bug.md`).
 
 ## Upgrade
 Replace `kit/` and `kit.manifest.yml` in one human PR, copy the commands again (Files, step 2), then run `/refresh`.
