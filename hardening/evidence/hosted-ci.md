@@ -113,3 +113,5 @@ run; ruleset reads; owner approving a bot PR; a bot PR to master under the new m
 Decision (owner, after the access loss): drop fix (a) and the bot account. Kept: CI from master (b), gate
 `protected_path` (w1b, w2 blocked), rulesets, and the rule that only a human merges (not enforced: accepted limit).
 INSTALL source edited in `proposal/modules/01-core.md`; not tangled, not pinned.
+After the relink to harihara-ai: `git fetch` shows #3 merged on trial-main (`0118cb3`). The GitHub tools still answer
+`invalid session` (as after the earlier relink), so #17's checks, the baseline run and the rulesets: not read.
