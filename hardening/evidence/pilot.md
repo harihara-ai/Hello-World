@@ -162,6 +162,9 @@ Tokens and minutes per slice: not measured. Escapes after merge: none known yet 
   classes, scores only mutants on changed lines. Local: CL-1 100% (6/6); CL-1 with 2 of 3 tests removed 83.3% (5/6,
   "replaced boolean return with true" survived, CharUtils.java:207); CL-2 100% (2/2); CL-3 100% (4/4); 7-9 s each.
   Pitfalls met: relative `--classPath` entries found no tests; dropping commons-text broke the XML report.
-- Not run: either job on GitHub (they start on the first PR after each merge); PHP and .NET stacks (Infection,
-  Stryker.NET); a mutation score target (set from pilot data).
-- commons-lang#9 (CL-3 code) still open: owner to merge.
+- Owner merged koa#11, commons-lang#12 and commons-lang#9. First GitHub runs, on trial PRs that rewrite one line
+  with the same behaviour (closed unmerged): koa#12 `mutation` success, "Score 100.0%: 7 of 7 mutants killed,
+  lib/only.js:2-2" (job 128469965130, about 41 s); commons-lang#13 `mutation` success, "100.0%: 6 of 6 mutants on
+  changed lines killed, CharUtils" (job 128471012409, about 62 s with compile). `gate` failed on both (code with no
+  plan), as expected; `tests` passed.
+- Not run: PHP and .NET stacks (Infection, Stryker.NET); a mutation score target (set from pilot data).

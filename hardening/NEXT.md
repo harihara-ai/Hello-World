@@ -52,7 +52,7 @@ Start with item 1 and stop when it is done.
   edit (N01 a dropped), show the pin diff, pin on the owner's yes, rebuild the package. Append to `evidence/hosted-ci.md`.
 - **C. Pilot** per the Gold plan. Started 2026-11-07 (`evidence/pilot.md`): koa (JS) and commons-lang (Java) installed,
   3 slices each, all 12 PRs passed CI gates first time. P01-P05 fixed and pinned (1.0.5). Open: upgrade both
-  repos to 1.0.5 (tests P01), item 2 (mutation testing),
+  repos to 1.0.5 (done). Item 2 done for JS and Java (report-only mutation jobs, run on GitHub). Open:
   four weeks of use with escape and metrics logging, then the Gold decision.
 
 ## Fix plan for the known issues (value first, effort second)
@@ -61,14 +61,14 @@ Start with item 1 and stop when it is done.
 | 1 | done: L01-L04 fixed after the cap, never reviewed | One short check: R2 and R5 only, re-run their round 6 attacks and the INSTALL walk-through. No full round | High: closes the only unreviewed blockers | Low (one session) |
 | 1c | done, pinned (option b). M02: a PR's test forges coverage.py data; CI passes with an untested branch | Owner picks: accept as limit (J04 family), or reuse the coverage gate's COVERAGE_IGNORE scan to fail on coverage-API tokens in changed test files | High: coverage is a floor gate (traps 1, 8) | Low (decision; option b is a list and a test) |
 | 1b | done, pinned. M01: PR tests plant a git hook or config that rewrites the approved kit (t2-t4) | INSTALL only: tests in one job, gate in a second job on a fresh runner that runs no PR code before gate_check. Pin needs a human | High: a blocker | Low (one INSTALL edit, re-run t2-t4) |
-| 2 | J04, J05: weak tests for new code, weakened edited tests | No new gate. In the pilot CI, run diff-scoped mutation testing on changed lines (mutmut, Stryker, PIT or Infection with a since-base option) for Tier 1 modules; report the score in the PR | High: the only real control for the top risk | Medium (CI step per stack) |
+| 2 | done for JS and Java (pilot): J04, J05: weak tests for new code, weakened edited tests | No new gate. In the pilot CI, run diff-scoped mutation testing on changed lines (mutmut, Stryker, PIT or Infection with a since-base option) for Tier 1 modules; report the score in the PR | High: the only real control for the top risk | Medium (CI step per stack) |
 | 3 | done, pinned. J06: coverage exclusions in build files | No new gate. Add `pyproject.toml`, `pom.xml`, `build.gradle`, `package.json`, `*.csproj` to CODEOWNERS in INSTALL so a human always reviews them | Medium | Very low (one INSTALL line) |
 | 4 | done, pinned. L06 minor wording, orphan_id noise, Delphi `{tests}` example | One small batch | Low-medium: removes friction for pilot teams | Low |
 | 5 | done, pinned. G24: install is about 6 manual steps | Make `forge.sh package` lay out files at repo-root paths so install is "unzip into the repo, then /bootstrap" | Medium: first impression of the pilot | Low-medium |
 | 6 | F17: slice sizes are estimates | Wait for pilot metrics; if slices overrun, derive `files` from the impact scan | Low until data shows it | Deferred |
 | 7 | G19: unrequested function inside an in-scope file | Wait; AI review covers it; revisit only if the pilot shows escapes | Low until data shows it | Deferred |
 
-Pre-pilot items done (1, 1b, 1c, 3, 4, 5). Do 2 while setting the pilot up. Leave 6 and 7 to pilot data.
+Pre-pilot items done (1, 1b, 1c, 3, 4, 5); 2 done in the pilot repos (Stryker, PIT). Leave 6 and 7 to pilot data.
 
 ## Not run (open register; close an item only with a run and its evidence)
 | Item | Risk if wrong | When |
