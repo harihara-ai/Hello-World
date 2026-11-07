@@ -46,8 +46,8 @@ Start with item 1 and stop when it is done.
   for the bot was refused by the session (github.com uses the GitHub connection only). Owner linked Claude's GitHub to
   harihara-ai-bot (2026-11-07); the old session's GitHub tools then failed (`invalid session`): start B2 fresh. Owner: rulesets per part 4 of
   session B (block force pushes on trial-main; master ruleset; admin bypass for PRs only). Append to `evidence/hosted-ci.md`.
-- **B3. Close B2**. Done (`evidence/hosted-ci.md`, B3). Open: owner deletes branch `trial/w1-bot` (hidden PR #17;
-  push refused here). Was: (after the owner relinks Claude's GitHub to harihara-ai; the bot is dropped). Push the B2 commit;
+- **B3. Close B2**. Done (`evidence/hosted-ci.md`, B3); owner deleted `trial/w1-bot` (hidden PR #17).
+  Was: (after the owner relinks Claude's GitHub to harihara-ai; the bot is dropped). Push the B2 commit;
   read #17's checks, close it unmerged; read #3's merge, the next baseline run and both rulesets; tangle the INSTALL
   edit (N01 a dropped), show the pin diff, pin on the owner's yes, rebuild the package. Append to `evidence/hosted-ci.md`.
 - **C. Pilot** per the Gold plan, with item 2 (diff-scoped mutation testing) set up per stack.

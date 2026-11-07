@@ -134,4 +134,5 @@ PINNED (owner "yes"): changed=1 (`kit/INSTALL.md`, high-risk), kit.lock to `2fd5
 49 clean; selftest lock match, forge 30, unit 170, contract 5, mutation 14 OK; run_traps (1 run) 22/22, critical 17/17,
 other 5/5, false alarms 0. Package 1.0.4 (`package.md`).
 #17: owner said delete `trial/w1-bot`; `git push --delete` refused (HTTP 403, this session may push only its own
-branch). Still open: the owner deletes the branch in the phone browser (Branches page), which closes #17.
+branch). Owner deleted `trial/w1-bot` (phone). `ls-remote`: branch gone, `refs/pull/17/merge` gone, only
+`refs/pull/17/head` left (GitHub keeps it). #17 still 404, so its closed state: not read.
