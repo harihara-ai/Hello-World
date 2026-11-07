@@ -42,7 +42,8 @@ Repos (owner choice): legacy `harihara-ai/commons-lang` (Java, Maven, JaCoCo, PI
 ## commons-lang slices
 | Ticket | Type | Plan PR | ready (CI) | Code PR | done | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| CL-1 CharUtils.isAsciiWhitespace | story | commons-lang#4 | pending | - | local pass: changed-line coverage 100%, red_check exit_base 1 (compile error on base) | RED is a test compile error: red_check counts it as fail-on-base |
+| CL-1 CharUtils.isAsciiWhitespace | story | commons-lang#4 (merged `4c85e8e`) | pass | commons-lang#5 | CI pass (job 128454292181): changed-line coverage 100%, red_check exit_base 1 (compile error on base), Maven helper ran | RED is a test compile error: red_check counts it as fail-on-base |
+| CL-2 BitField.getValue(long) bit 63 | bug (hunt, unreleased 3.21.0 API) | commons-lang#6 | pending | - | local pass: coverage 100%, exit_base 1 | P04 applied: fix spike ran the BitField tests before the plan; none pinned the bug |
 
 
 ## Findings
