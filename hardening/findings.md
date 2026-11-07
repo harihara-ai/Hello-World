@@ -170,3 +170,16 @@ Round 4 fixes re-checked: R1 12/15 hold (hotfix flows fail), R2 4/5 attacks clos
 | K09 | 5 | minor | diff_scope, INSTALL | untracked __pycache__ from CI's own test step and gates-*.json would fail or be committed (R2 note, R5-5-01) | accept | bytecode check covers tracked files only; INSTALL lists the two ignore lines | fixed (pinned round 5) |
 | K10 | 5 | minor | red_check | runner that finds no tests (pytest exit 5) reads as red (R3-5-04) | accept | exit 5 is a runner error | fixed (pinned round 5) |
 | K11 | 5 | minor | commands, templates, state.md | leftover wording: bootstrap policy, gate sign-off, impact.md, docs type, old branch rule, G1 undefined (R1 N1-N3, R4 minors, R3-5-03) | accept | fix wording; one {tests} example line per stack | fixed (pinned round 5) |
+
+Round 6 (frozen f571848; final verification; round cap). Raw: R1 0 blockers, 1 major; R2 2 blockers; R3 0; R4 0; R5 2 blockers (one is accepted limit J04). Not clean.
+Round 5 fixes re-checked: R1 12/13 hold (spike flow fails), R2 3/5 closed, R3 5/5 hold, R4 R4-5-01 closed, R5 21/21 x5, walk-through green with COVERAGE_FILE outside the checkout.
+Hardening stopped at the round cap (6) with the items below open. Stop rule (2 clean rounds in a row) was never met.
+
+| id | round | severity | location | problem | decision | reason | status |
+|---|---|---|---|---|---|---|---|
+| L01 | 6 | blocker | diff_scope | non-code files in the change folder still run (pytest collects test*.txt doctests) (R2-6-01) | open | smallest fix: allow only *.md, inputs/*.json and evidence/ attachments in a change folder | open (cap) |
+| L02 | 6 | blocker | INSTALL CI recipe | the PR's tests run after the approved worktree exists and can rewrite the approved kit (R2-6-02) | open | smallest fix: add the worktree after the test step and fail unless it is unmodified; better: gate in its own job | open (cap) |
+| L03 | 6 | blocker | INSTALL | coverage.py's .coverage data file lands in the checkout and fails diff_scope on every PR (R5-6-01) | open | doc fix: COVERAGE_FILE outside the checkout, or .coverage in the install PR's .gitignore | open (cap) |
+| L04 | 6 | major | playbooks/spike.md | spike mixes spec and findings in one PR; fails CI (R1-6-01) | open | doc fix: pick one route (docs-only findings PR, or two PRs with evidence.md) | open (cap) |
+| L05 | 6 | blocker | red_check, coverage | tests that run new code but assert nothing pass (R5-6-02) | limit | same root cause as accepted limit J04 | closed (limit J04) |
+| L06 | 6 | minor | INSTALL, trace_check | test step result not enforced by the gate; flaky baseline; orphan_id warnings pile up; Delphi {tests} example; untracked helpers removed during base run (R1 N1-N3, R3-6-01..03, R4 minors, R5-6-03) | open | wording and small fixes | open (cap) |
