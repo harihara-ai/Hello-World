@@ -23,17 +23,19 @@ Put every pattern in `PROTECTED` in `kit/scripts/kitconst.py` into `CODEOWNERS`.
 Local runs are early feedback: the agent controls its own working copy. The required CI job runs the approved
 kit from the target branch, in its own worktree, against the PR checkout:
 ```
-git fetch origin <target>
-BASE=$(git merge-base HEAD origin/<target>)
+git fetch origin <target> && BASE=$(git merge-base HEAD origin/<target>)
 git worktree add ../approved origin/<target>
-GATE="python3 ../approved/kit/scripts/gate_check.py --repo . --change auto --base $BASE"
-$GATE ready                                  # plan PRs
-<run the tests with coverage on HEAD, writing the report outside the checkout, e.g. ../out/coverage.xml>
-<the same on BASE (or reuse the target branch's last report) for ../out/base.xml>
-$GATE done --coverage-report ../out/coverage.xml --baseline-report ../out/base.xml --test-cmd "<test command>"
+<run the tests with coverage; the step must pass; write the report outside the checkout: ../out/coverage.xml>
+python3 ../approved/kit/scripts/gate_check.py auto --repo . --change auto --base $BASE \
+  --coverage-report ../out/coverage.xml --baseline-report <the target's last coverage report> --test-cmd "<test command>"
 ```
-`--change auto` finds the PR's one change folder. With none, the job passes only if no production code changed
-(install, bootstrap and human kit or policy PRs; CODEOWNERS covers those). Make the job a required check.
+The gate picks the stage: ready for a plan PR (it may change only its change folder), done for a code PR. A PR
+with no change folder passes only if it touches docs or human-owned files. Keep each run's coverage report as an
+artifact; the target's latest is the next baseline, so the base is never re-tested. `{tests}` in the test command
+is replaced by the changed test files. No coverage tool (Delphi): a signed `min_changed_line_coverage: 0`.
+Make the job a required check.
+
+Hotfix at night: an admin merges with the check overridden, then the plan PR and the gates follow within 5 working days.
 
 ## Upgrade
 Replace `kit/` and `kit.manifest.yml` in one human PR, copy the commands again (Files, step 2), then run `/refresh`.

@@ -11,8 +11,8 @@ All under `openspec/changes/<name>/`:
 | `impact.md` | Files and symbols in scope | `/slice` |
 | `slices.md` | Ordered slice plan with scores | `/slice` |
 | `status.md` | `slice:`, `task:`, `next:` lines | Every command, at each step |
-| `evidence.md` | RED then GREEN command and short output per scenario | `/implement` |
-| `metrics.csv` | `slice,est_lines,actual_lines,files,attempts,tokens,minutes` | `/implement` |
+| `evidence.md` | RED then GREEN command and short output per scenario; marks the plan as used once merged | `/implement` |
+| `metrics.csv` | `slice,est_lines,actual_lines,files,attempts` | `/implement` |
 | `inputs/<gate>.json` | Input for one gate | The command that runs the gate |
 | `gates-ready.json`, `gates-done.json` | Last gate_check result | `gate_check.py` |
 

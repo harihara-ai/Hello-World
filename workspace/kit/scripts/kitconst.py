@@ -10,6 +10,7 @@ TEST_GLOBS = ["tests/*", "test/*", "spec/*", "features/*", "*/tests/*", "*/test/
               "test_*", "*/test_*", "*.feature", "*conftest.*", "safety-net/*"]
 TEST_NAME = re.compile(r"(^|[a-z0-9_])(Tests?|Spec|IT)\.[A-Za-z0-9]+$")  # FeeTest.php, not Contest.php
 NOT_PRODUCTION = ["openspec/*", "docs/*", "*.md"]
+DOCS = ["docs/*", "*.md"]
 # Files that steer the agent or run on checkout or in CI. A human changes them in their own PR.
 # Keep in step with HIGH_RISK in forge/tangle.py.
 PROTECTED = ["docs/ai/policy.yml", "docs/ai/policy-signoff.json", "kit/*", "kit.manifest.yml", "claude.md",
@@ -30,11 +31,10 @@ TEST_EXT = CODE_EXT + (".feature", ".robot")
 TYPES = {
     "story": {}, "nfr": {}, "bug": {}, "hotfix": {}, "chore": {}, "refactor": {},
     "spike": {"no_production": True},
-    "docs": {"no_production": True},
     "tests": {"add": ["flaky"], "no_production": True},
 }
 RED_TYPES = {"story", "nfr", "bug", "hotfix"}  # changed tests must fail on base code; other types must pass there
-NO_REQUIREMENT_TYPES = {"chore", "refactor", "spike", "docs"}
+NO_REQUIREMENT_TYPES = {"chore", "refactor", "spike"}  # docs-only PRs need no change folder at all
 
 
 def matches(path, globs):

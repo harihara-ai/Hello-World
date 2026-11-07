@@ -13,7 +13,7 @@ purpose: maps tracker types and user intents to playbooks; the Genie reads this 
 | Task, Sub-task | Task | `chore` | `playbook.no_behaviour_change` |
 | Improvement | Task (tech) | `debt` | `playbook.no_behaviour_change` |
 | Spike | Task or Issue | `spike` | `playbook.spike` |
-| Task | Task | `docs` | Docs change: `Type: docs`; no production file may change |
+| Task | Task | `docs` | No change folder: a PR touching only docs and `*.md` passes without one |
 | (any) | (any) | `tests` | `playbook.safety_net` |
 
 Unknown type: ask one multiple-choice question with the playbooks above as choices. Record the answer in `status.md`.

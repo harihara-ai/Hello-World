@@ -4,7 +4,7 @@ purpose: shared terms used by every component; new terms are added here, not red
 
 | Term | Meaning |
 | --- | --- |
-| Change | One spec, one branch, one PR. Folder `openspec/changes/<name>/` |
+| Change | One spec, two PRs: the plan, then the code. Folder `openspec/changes/<name>/` |
 | Slice | One requirement or a few scenarios, vertically complete, independently testable |
 | Task | One scenario, one red-green cycle |
 | Floor | Minimum bar in the kit's `policy.yml`. Repos may raise it, never lower it silently |

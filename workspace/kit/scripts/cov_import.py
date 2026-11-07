@@ -100,7 +100,10 @@ def match(repo_path, report_paths):
     scored = sorted(((common(p), p) for p in paths), reverse=True)
     if not scored or scored[0][0] == 0 or (len(scored) > 1 and scored[1][0] == scored[0][0]):
         return None
-    return scored[0][1]
+    best_n, best = scored[0]
+    if best_n < 2 and "/" in best.replace("\\", "/").strip("/"):  # one shared file name across modules is not a match
+        return None
+    return best
 
 
 def parse_reports(paths):
@@ -134,7 +137,8 @@ def parse_diff(text):
 def changed_lines(base):
     if not re.fullmatch(r"[\w./~^@-]+", base) or base.startswith("-"):
         raise ValueError("bad base ref")
-    diff = subprocess.run(GIT_DIFF + ["-U0", "--no-renames", base, "--"], capture_output=True, text=True)
+    diff = subprocess.run(GIT_DIFF + ["-U0", "--no-renames", base, "--"], capture_output=True, text=True,
+                          encoding="utf-8", errors="replace")
     if diff.returncode != 0:
         raise ValueError("git diff failed: %s" % diff.stderr.strip())
     out = parse_diff(diff.stdout)
@@ -145,4 +149,12 @@ def changed_lines(base):
                 out[f] = set(range(1, len(fh.read().splitlines()) + 1))
         except OSError:
             continue
-    return out
+    return {f: lines for f, lines in out.items() if not _binary(f)}
+
+
+def _binary(path):
+    try:
+        with open(path, "rb") as fh:
+            return b"\x00" in fh.read(8192)
+    except OSError:
+        return False

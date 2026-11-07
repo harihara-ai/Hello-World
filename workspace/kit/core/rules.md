@@ -12,3 +12,6 @@ purpose: the floor rules every command and playbook obeys; nothing outside core 
 7. **Legacy safety.** Untested code is pinned by characterization tests before it is changed (Slice 0).
 8. **Say what is unverified.** Report only what was run. Mark the rest "not run".
 9. **Detect, then ask.** Adopt a choice when two signals agree. Otherwise ask one multiple-choice question and record the answer.
+10. **What the gates cannot prove.** That tests for brand-new code assert the right thing, that edited tests were not weakened,
+    and that coverage settings in general build files (pyproject.toml, pom.xml) were not loosened. Review these yourself;
+    the human PR review and, where configured, mutation testing are the controls.

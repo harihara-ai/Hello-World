@@ -128,28 +128,28 @@ tests for new code that assert little (R2-4-01, R2-3-05), weakened assertions in
 
 | id | round | severity | location | problem | decision | reason | status |
 |---|---|---|---|---|---|---|---|
-| J01 | 4 | blocker | gate_check, INSTALL | RC-F stage, plan reuse and folder choice are up to the PR (R1-4-01, R2-4-03, R2-4-04, R5-4-01) | accept | stage auto from git; plan PR may touch only its folder; done needs evidence.md new in this PR | fixed, pending pin |
-| J02 | 4 | blocker | gate_check | no change folder passes when only tests changed (R1-4-02) | accept | the no-folder pass covers only protected files and docs | fixed, pending pin |
-| J03 | 4 | blocker | red_check | a runner that cannot start in the base worktree counts as red (R3-4-01) | accept | base code is restored inside the checkout (no worktree); exit 126, 127 or timeout is an error | fixed, pending pin |
-| J04 | 4 | blocker | red_check | tests for new code pass red_check by failing to load on base (R2-4-01, R2-3-05) | reject | needs per-test JUnit parsing; known limit, covered by AI test review (10.4 #10), PR review and mutation testing (ceiling) | closed (limit) |
-| J05 | 4 | blocker | red_check | weakened assertion in an existing test passes (R2-4-02) | reject | spec 10.4 #10 is an AI check; a deterministic version needs requirement-aware test diffing | closed (limit) |
-| J06 | 4 | major | coverage | coverage exclusion in pyproject.toml (R2-4-05) | reject | general build files cannot be protected; human review of the approved scan; documented limit | closed (limit) |
-| J07 | 4 | major | coverage, diff_scope | binary file crashes coverage; committed bytecode is ignored by diff_scope (R2-4-06) | accept | skip binary files; added bytecode fails | fixed, pending pin |
-| J08 | 4 | major | red_check | whole suite on base: unrelated failure fakes red (R3-4-02) | accept | optional {tests} placeholder in --test-cmd | fixed, pending pin |
-| J09 | 4 | major | coverage | no coverage tool (Delphi) can never pass (R3-4-03, G20) | accept | a signed min_changed_line_coverage of 0 means no report is needed | fixed, pending pin |
-| J10 | 4 | major | cov_import | lone file-name match inherits another module's coverage (R3-4-04) | accept | need two shared path segments unless the report path is a bare name | fixed, pending pin |
-| J11 | 4 | major | INSTALL | hotfix at night needs two merges; break-glass undocumented (R3-4-05) | accept | three lines: admin merge, then the plan and gates within 5 working days | fixed, pending pin |
-| J12 | 4 | major | state.sh, glossary | change name from branch breaks with two PRs (R1-4-03) | accept | match the change folder whose name the branch contains; glossary: one spec, two PRs | fixed, pending pin |
-| J13 | 4 | minor | tangle | kit/INSTALL.md not high-risk (R2-3-08) | accept | add to high-risk names | fixed, pending pin |
-| J14 | 4 | minor | commands | bootstrap says policy; implement points at impact.md, gate step 5 asks a redundant sign-off (R1-4-04, -05, -C3) | accept | fix wording; remove step | fixed, pending pin |
-| C01 | 4 | cut | red_check | head run duplicates CI's coverage run (R3-4-C1) | accept | remove; the CI test step must pass | fixed, pending pin |
-| C02 | 4 | cut | red_check | behaviour_changed base run for refactors (R3-4-C2) | accept | remove; refactor safety = existing tests green on head | fixed, pending pin |
-| C03 | 4 | cut | coverage | stale_report mtime check (R3-4-C3, H18) | accept | remove; reports come from CI | fixed, pending pin |
-| C04 | 4 | cut | gate_check | --baseline-total keeps an agent-typed number (R1-4-C2) | accept | remove; baseline is a report (CI reuses the target's last one, no extra run: R4-4-01 in part) | fixed, pending pin |
-| C05 | 4 | cut | kitconst, router | Type docs duplicates the no-folder path (R1-4-C1) | accept | remove the type; docs-only PRs need no change folder | fixed, pending pin |
-| C06 | 4 | cut | gate_check | --also flag (R4-4-05) | accept | remove | fixed, pending pin |
-| C07 | 4 | cut | CLAUDE.md, router.md, state.md | duplicates in always-loaded text; unmeasurable metrics columns (R4-4-03, -04, -06) | accept | trim | fixed, pending pin |
+| J01 | 4 | blocker | gate_check, INSTALL | RC-F stage, plan reuse and folder choice are up to the PR (R1-4-01, R2-4-03, R2-4-04, R5-4-01) | accept | stage auto from git; plan PR may touch only its folder; done needs evidence.md new in this PR | fixed (pinned round 4) |
+| J02 | 4 | blocker | gate_check | no change folder passes when only tests changed (R1-4-02) | accept | the no-folder pass covers only protected files and docs | fixed (pinned round 4) |
+| J03 | 4 | blocker | red_check | a runner that cannot start in the base worktree counts as red (R3-4-01) | accept | base code is restored inside the checkout (no worktree); exit 126, 127 or timeout is an error | fixed (pinned round 4) |
+| J04 | 4 | blocker | red_check | tests for new code pass red_check by failing to load on base (R2-4-01, R2-3-05) | reject | needs per-test JUnit parsing; known limit, covered by AI test review (10.4 #10), PR review and mutation testing (ceiling) | closed (limit, accepted by human after round 4) |
+| J05 | 4 | blocker | red_check | weakened assertion in an existing test passes (R2-4-02) | reject | spec 10.4 #10 is an AI check; a deterministic version needs requirement-aware test diffing | closed (limit, accepted by human after round 4) |
+| J06 | 4 | major | coverage | coverage exclusion in pyproject.toml (R2-4-05) | reject | general build files cannot be protected; human review of the approved scan; documented limit | closed (limit, accepted by human after round 4) |
+| J07 | 4 | major | coverage, diff_scope | binary file crashes coverage; committed bytecode is ignored by diff_scope (R2-4-06) | accept | skip binary files; added bytecode fails | fixed (pinned round 4) |
+| J08 | 4 | major | red_check | whole suite on base: unrelated failure fakes red (R3-4-02) | accept | optional {tests} placeholder in --test-cmd | fixed (pinned round 4) |
+| J09 | 4 | major | coverage | no coverage tool (Delphi) can never pass (R3-4-03, G20) | accept | a signed min_changed_line_coverage of 0 means no report is needed | fixed (pinned round 4) |
+| J10 | 4 | major | cov_import | lone file-name match inherits another module's coverage (R3-4-04) | accept | need two shared path segments unless the report path is a bare name | fixed (pinned round 4) |
+| J11 | 4 | major | INSTALL | hotfix at night needs two merges; break-glass undocumented (R3-4-05) | accept | three lines: admin merge, then the plan and gates within 5 working days | fixed (pinned round 4) |
+| J12 | 4 | major | state.sh, glossary | change name from branch breaks with two PRs (R1-4-03) | accept | match the change folder whose name the branch contains; glossary: one spec, two PRs | fixed (pinned round 4) |
+| J13 | 4 | minor | tangle | kit/INSTALL.md not high-risk (R2-3-08) | accept | add to high-risk names | fixed (pinned round 4) |
+| J14 | 4 | minor | commands | bootstrap says policy; implement points at impact.md, gate step 5 asks a redundant sign-off (R1-4-04, -05, -C3) | accept | fix wording; remove step | fixed (pinned round 4) |
+| C01 | 4 | cut | red_check | head run duplicates CI's coverage run (R3-4-C1) | accept | remove; the CI test step must pass | fixed (pinned round 4) |
+| C02 | 4 | cut | red_check | behaviour_changed base run for refactors (R3-4-C2) | accept | remove; refactor safety = existing tests green on head | fixed (pinned round 4) |
+| C03 | 4 | cut | coverage | stale_report mtime check (R3-4-C3, H18) | accept | remove; reports come from CI | fixed (pinned round 4) |
+| C04 | 4 | cut | gate_check | --baseline-total keeps an agent-typed number (R1-4-C2) | accept | remove; baseline is a report (CI reuses the target's last one, no extra run: R4-4-01 in part) | fixed (pinned round 4) |
+| C05 | 4 | cut | kitconst, router | Type docs duplicates the no-folder path (R1-4-C1) | accept | remove the type; docs-only PRs need no change folder | fixed (pinned round 4) |
+| C06 | 4 | cut | gate_check | --also flag (R4-4-05) | accept | remove | fixed (pinned round 4) |
+| C07 | 4 | cut | CLAUDE.md, router.md, state.md | duplicates in always-loaded text; unmeasurable metrics columns (R4-4-03, -04, -06) | accept | trim | fixed (pinned round 4) |
 | C08 | 4 | cut | glossary | G1-G4 beside ready/done (R4-4-07) | reject | spec uses both; glossary maps them (G26) | closed |
 | C09 | 4 | add | INSTALL | script to print CODEOWNERS lines (R4-4-08) | reject | adds a script; the lead copies one list | closed |
 | J15 | 4 | minor | kitconst | FooTests/ folder, Spec model class (R3-4-06) | reject | wider globs re-open production misclassification (R3-3-08); rename or list in the scan | closed |
-| J16 | 4 | minor | testbed | change folder lacks slices.md (R5-4-02) | accept | add one | fixed, pending pin |
+| J16 | 4 | minor | testbed | change folder lacks slices.md (R5-4-02) | accept | add one | fixed (pinned round 4) |

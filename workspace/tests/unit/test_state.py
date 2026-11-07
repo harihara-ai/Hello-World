@@ -40,7 +40,7 @@ class State(unittest.TestCase):
         self.assertTrue(self.state(self.d)[1]["bootstrapped"])
 
     def test_change_with_status_and_gate(self):
-        git(self.d, "checkout", "-q", "-b", "feature/SHOP-12-add-discount")
+        git(self.d, "checkout", "-q", "-b", "feature/SHOP-12-add-discount-code")
         ch = "openspec/changes/SHOP-12-add-discount/"
         write(self.d, ch + "status.md", 'slice: S1\nnext: run /gate done "now"\n')
         write(self.d, ch + "gates-ready.json", {"stage": "ready", "pass": True})

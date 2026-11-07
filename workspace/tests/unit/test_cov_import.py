@@ -49,6 +49,8 @@ class CovImport(unittest.TestCase):
         self.assertEqual(cov_import.match("src/main/java/com/shop/Fee.java", ["com/shop/Fee.java"]), "com/shop/Fee.java")
         self.assertEqual(cov_import.match("src/Fee.php", ["/build/src/Fee.php"]), "/build/src/Fee.php")
         self.assertIsNone(cov_import.match("src/Other.php", ["/build/src/Fee.php"]))
+        self.assertIsNone(cov_import.match("billing/Helper.php", ["/build/orders/Helper.php"]))
+        self.assertEqual(cov_import.match("src/Helper.php", ["Helper.php"]), "Helper.php")
 
     def test_diff_hunks(self):
         diff = "+++ b/src/a.py\n@@ -1,0 +2,3 @@\n+x\n@@ -9 +12 @@\n+y\n+++ b/src/b.py\n@@ -3,2 +3,0 @@\n"

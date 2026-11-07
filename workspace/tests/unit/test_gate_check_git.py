@@ -25,12 +25,12 @@ class GitGateCheck(unittest.TestCase):
         self.assertIn("red_check", [g["gate"] for g in out["gates"]])
 
     def test_change_auto_finds_the_folder(self):
-        write(self.root, self.ch + "/status.md", "next: done\n")
         rc, out, log = self.done(change="auto")
         self.assertEqual(rc, 0, log)
         self.assertEqual(out["change"], self.ch)
 
     def test_no_change_folder_with_code_changes_fails(self):
+        os.remove(os.path.join(self.root, self.ch, "evidence.md"))
         rc, out, log = self.done(change="auto")
         self.assertEqual(rc, 1, log)
         self.assertIn("change folder", json.dumps(out))
@@ -80,7 +80,7 @@ class GitGateCheck(unittest.TestCase):
         self.assertIn("red_check", failing(out))
 
     def test_coverage_report_and_baseline_only_from_flags(self):
-        write(self.root, self.ch + "/inputs/coverage.json", {"report": self.report, "baseline_total": 0})
+        write(self.root, self.ch + "/inputs/coverage.json", {"reports": [self.report], "baseline_total": 0})
         rc, out, log = gate_check(self.root, self.ch, "done", "--base", self.base, "--test-cmd", TEST_CMD)
         self.assertEqual(rc, 1, log)
         self.assertIn("coverage", failing(out))
@@ -95,9 +95,55 @@ class GitGateCheck(unittest.TestCase):
 
     def test_red_check_needs_a_test_command(self):
         rc, out, _ = gate_check(self.root, self.ch, "done", "--base", self.base, "--coverage-report", self.report,
-                                "--baseline-total", "70")
+                                "--baseline-report", self.report)
         self.assertEqual(rc, 1)
         self.assertIn("red_check", failing(out))
+
+
+    def test_stage_auto_runs_done_when_the_plan_is_merged(self):
+        rc, out, log = gate_check(self.root, "auto", "auto", *ci_args(self.base, self.report))
+        self.assertEqual(rc, 0, log)
+        self.assertEqual(out["stage"], "done")
+
+    def test_stage_auto_runs_ready_for_a_plan_pr_and_code_is_refused(self):
+        import shutil
+        root, ch = make_repo()
+        aside = os.path.join(tempfile.mkdtemp(), "ch")
+        shutil.move(os.path.join(root, ch), aside)
+        git_init(root)
+        base = git(root, "rev-parse", "HEAD").strip()
+        shutil.move(aside, os.path.join(root, ch))
+        rc, out, log = gate_check(root, "auto", "auto", "--base", base)
+        self.assertEqual(rc, 0, log)
+        self.assertEqual(out["stage"], "ready")
+        write(root, "src/evil.py", "x = 1\n")
+        rc, out, _ = gate_check(root, "auto", "auto", "--base", base)
+        self.assertEqual(rc, 1)
+        self.assertIn("diff_scope", failing(out))
+
+    def test_done_needs_evidence_new_in_this_pr(self):
+        os.remove(os.path.join(self.root, self.ch, "evidence.md"))
+        rc, out, _ = self.done()
+        self.assertEqual(rc, 1)
+        self.assertIn("plan", failing(out))
+
+    def test_a_used_plan_cannot_govern_a_new_pr(self):
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "first code PR merged")
+        base = git(self.root, "rev-parse", "HEAD").strip()
+        write(self.root, "src/discount.py", CLEAN_SRC + "\ndef extra():\n    return 1\n")
+        write(self.root, self.ch + "/evidence.md", "again\n")
+        rc, out, _ = gate_check(self.root, self.ch, "done", *ci_args(base, self.report))
+        self.assertEqual(rc, 1)
+        self.assertIn("plan_used", json.dumps(out))
+
+    def test_no_folder_pass_does_not_cover_tests(self):
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "merged")
+        base = git(self.root, "rev-parse", "HEAD").strip()
+        os.remove(os.path.join(self.root, "tests/test_discount.py"))
+        rc, out, _ = gate_check(self.root, "auto", "auto", "--base", base)
+        self.assertEqual(rc, 1)
 
 
 if __name__ == "__main__":

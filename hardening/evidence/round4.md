@@ -22,3 +22,6 @@ GREEN (3 runs, scratch tangle): 'score: 20/20 cases; critical 15/15; other 5/5; 
 phase 2 pin 308a9f4: code 710, md/yml 547, files 44. Round 3 pin: 1250, 600, 49. Round 4: 1282, 594, 49.
 Correction: the round 3 report gave '1044' lines of code; that number came from a different command and was wrong. The right figure is 1250.
 CLAUDE.md (always loaded): 31 lines -> 20.
+
+## Pin and GREEN on workspace (human-approved; J04-J06 limits accepted)
+PINNED 70 files. added=0 changed=25 removed=0 (13 high-risk approved).

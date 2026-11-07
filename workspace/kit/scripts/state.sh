@@ -10,7 +10,10 @@ ticket=$(printf '%s' "$branch" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | head -1)
 exec python3 -I -B -c '
 import glob, json, os, sys
 branch, ticket, change, root = sys.argv[1:5]
-d = os.path.join(root, "openspec", "changes", change) if change else ""
+changes = os.path.join(root, "openspec", "changes")
+names = sorted((n for n in (os.listdir(changes) if os.path.isdir(changes) else []) if n in change), key=len)
+change = names[-1] if names else change  # a code branch may add a suffix (two PRs per change)
+d = os.path.join(changes, change) if change else ""
 state = {"branch": branch or None, "ticket": ticket or None, "change": change or None,
          "change_exists": bool(d) and os.path.isdir(d), "next": None, "last_gate": None,
          "bootstrapped": os.path.isfile(os.path.join(root, "docs", "ai", "index.json"))}

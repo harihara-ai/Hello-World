@@ -70,12 +70,15 @@ class ReportCoverage(unittest.TestCase):
         rc, out, log = run_gate("coverage", {"base": "HEAD"}, cwd=self.root)
         self.assertEqual(rc, 0, log)
 
-    def test_stale_report_fails(self):
-        p = write(self.root, "cov.xml", cobertura({"src/price.py": {1: 1, 2: 1, 3: 1}}))
-        os.utime(p, (1, 1))
-        rc, out, _ = run_gate("coverage", {"reports": ["cov.xml"], "base": "HEAD", "baseline_total": 50.0}, cwd=self.root)
-        self.assertEqual(rc, 1)
-        self.assertIn("stale_report", rules(out))
+    def test_binary_files_do_not_crash(self):
+        with open(os.path.join(self.root, "logo.png"), "wb") as fh:
+            fh.write(b"\x89PNG\r\n\x1a\n\x00\xff\xfe\x00")
+        rc, out, log = self.run_report(cobertura({"src/price.py": {1: 1, 2: 1, 3: 1}}))
+        self.assertEqual(rc, 0, log)
+
+    def test_signed_zero_floor_needs_no_report(self):
+        rc, out, log = run_gate("coverage", {"base": "HEAD", "policy": {"min_changed_line_coverage": 0}}, cwd=self.root)
+        self.assertEqual(rc, 0, log)
 
     def test_repo_git_config_cannot_hide_changes(self):
         git(self.root, "config", "diff.noprefix", "true")

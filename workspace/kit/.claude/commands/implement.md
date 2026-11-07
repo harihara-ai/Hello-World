@@ -13,4 +13,4 @@ Follow `kit/core/rules.md`. Arguments: `$ARGUMENTS`.
 3. Refactor only what you just wrote, tests green. Commit `REQ-<AREA>-<NNN>: <what>`.
 4. Append a row to `metrics.csv`. Update `status.md`.
 5. After 3 failed attempts on a task: stop and report with evidence. Out-of-scope ideas go under "Out of scope noticed" in `evidence.md`.
-Never edit a test to make it pass. Never touch files outside `impact.md`.
+Never edit a test to make it pass. Never touch files outside the merged `inputs/diff_scope.json`.

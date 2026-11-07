@@ -1,5 +1,5 @@
 ---
-description: Set up a repo once: probe tools, detect practices, write docs/ai knowledge files and policy. Safe to re-run.
+description: Set up a repo once: probe tools, detect practices, write docs/ai knowledge files. Safe to re-run.
 argument-hint: 
 ---
 

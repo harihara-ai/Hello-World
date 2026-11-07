@@ -45,7 +45,9 @@ def check(p):
     f += [finding("plan_changed", "the approved plan changed after G1; change it in a new plan PR: %s" % c, c)
           for c in changed if c in plan]
     ch = p.get("change_dir", "").rstrip("/")
-    changed = [c for c in changed if not (ch and c.startswith(ch + "/")) and "__pycache__/" not in c]
+    f += [finding("bytecode_added", "compiled bytecode cannot be reviewed: %s" % c, c)
+          for c in changed if c.endswith((".pyc", ".pyo")) or "__pycache__/" in c]
+    changed = [c for c in changed if not (ch and c.startswith(ch + "/"))]
     f += [finding("protected_path", "a human changes this file in its own PR: %s" % c, c) for c in changed if matches(c, PROTECTED)]
     scan = p.get("impact_scan", [])
     if not scan:
