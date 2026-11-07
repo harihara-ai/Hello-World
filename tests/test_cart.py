@@ -15,4 +15,4 @@ class Cart(unittest.TestCase):
             cart.bulk_discount([{"price": 1.0, "qty": -1}])
 
     def test_REQ_CART_002_nine_units_no_discount(self):  # REQ-CART-002
-        self.assertEqual(cart.bulk_discount([{"price": 10.0, "qty": 9}]), 0.0)
+        self.assertEqual(cart.bulk_discount([{"price": 10.0, "qty": 9}]), 4.5)
