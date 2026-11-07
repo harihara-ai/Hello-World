@@ -162,6 +162,15 @@ class TangleTests(unittest.TestCase):
         rc, out = self.tangle("--check")
         self.assertEqual(rc, 1, out)
 
+    def test_high_risk_approval_belongs_to_the_pin(self):
+        self.write(block("kit/.claude/commands/x.md", "purpose: x"))
+        self.assertEqual(self.pin("--approve-high-risk")[0], 0)
+        rc, out = self.tangle()
+        self.assertEqual(rc, 0, out)
+        self.write(block("kit/.claude/commands/x.md", "purpose: changed"))
+        rc, out = self.tangle()
+        self.assertEqual(rc, 1)
+
 
 MANIFEST_OK = """\
 - id: core.glossary

@@ -48,31 +48,33 @@ closes below follow the same rule: facts come from the base commit or git, never
 
 | id | round | severity | location | problem | decision | reason | status |
 |---|---|---|---|---|---|---|---|
-| G01 | 2 | blocker | INSTALL.md, gate_check.py | RC-A: no authoritative run; local state decides (R1-2-01..03, R2-2-01, -04, -05, -06) | accept | CI recipe in INSTALL: fresh clone, kit/policy/sign-off from target branch, CI-made coverage report, base = merge-base with target | open |
-| G02 | 2 | blocker | gate_check.py | --change may be any folder; diff_scope then ignores it (R1-2-01) | accept | --change must be openspec/changes/<one name> | open |
-| G03 | 2 | blocker | gate_check.py | base from agent flag, local branch or silent HEAD fallback (R2-2-01) | accept | default only from origin/HEAD, origin/main, origin/master; no remote and no --base = fail | open |
-| G04 | 2 | blocker | gate_check.py, policy_guard | sign-off read from working tree (R2-2-02, F07) | accept | sign-off read from the base commit, like the base policy | open |
-| G05 | 2 | blocker | gate_check.py, kitconst TYPES | Type line in spec.md drops gates (R1-2-05, R2-2-03) | accept | drop lists removed: Type can only tighten (no_production, flaky); a gate passes alone only when it has nothing to check | open |
-| G06 | 2 | blocker | gates/coverage.py | manual numbers pass inside git; stale report passes (R1-2-02, -03, R2-2-06, R3-2-03, F05) | accept | inside git a report is required; report older than changed code fails; no changed code = nothing to check | open |
-| G07 | 2 | blocker | gate_check.py | planted __pycache__ .pyc is loaded by gates (R2-2-04) | accept | gates run with -X pycache_prefix in a temp dir | open |
-| G08 | 2 | blocker | cov_import.py, diff_scope.py | repo git config changes diff output (R2-2-05) | accept | git called with explicit diff flags and no external diff or textconv | open |
-| G09 | 2 | major | kitconst.py, tangle.py, INSTALL.md | protected and high-risk lists drift; agent-steering files unlisted (R2-2-07, R4-2-01) | accept | one PROTECTED list incl. .mcp.json, nested CLAUDE.md, .husky, .vscode, pre-commit, GitLab CI; tangle flags any .claude/ and CLAUDE.md; INSTALL points at the list | open |
-| G10 | 2 | major | forge/tangle.py | --check compares decoded text; CR swap undetected (R2-2-09) | accept | hash bytes | open |
-| G11 | 2 | minor | forge/tangle.py | fence after a closed-then-reopened comment is tangled (R2-2-10) | accept | track comment state across the line | open |
-| G12 | 2 | major | gates/trace_check.py | IDs read from ticket.md; prefixes testREQ_ fail; ids.txt counts (R1-2-07, R3-2-01, F01 leftover) | accept | IDs from spec.md and specs/ only; digit-only lookbehind; test files must be code or .feature | open |
-| G13 | 2 | major | cov_import.py | Cobertura sources ignored; same-name files cross-match (R3-2-02, R3-2-06) | accept | join source roots; exact match first, suffix only if unique; warn on unmatched files | open |
-| G14 | 2 | major | kitconst.py | globs case-sensitive; root Tests/ counts as production (R3-2-05) | accept | case-insensitive match | open |
-| G15 | 2 | major | kitconst.py | docs work cannot touch README.md; tests work cannot add conftest.py (R1-2-06) | accept | *.md and conftest are not production; framework setup is its own chore | open |
-| G16 | 2 | major | bootstrap.md | bootstrap writes protected policy and pollutes the first change (R1-2-04, R4-2-02) | accept | bootstrap does not copy policy (floor applies); runs on its own branch and PR | open |
-| G17 | 2 | major | gates/granularity.py | characterized stays amber after Slice 0 exists (R3-2-04) | accept | green when the plan has a characterization slice | open |
-| G18 | 2 | major | gates/diff_scope.py | impact scan '*' written at done turns scope off (R2-2-08) | accept part | reject bare '*' or '**' scans; plan integrity rests on CI and PR review (G01) | open |
+| G01 | 2 | blocker | INSTALL.md, gate_check.py | RC-A: no authoritative run; local state decides (R1-2-01..03, R2-2-01, -04, -05, -06) | accept | CI recipe in INSTALL: fresh clone, kit/policy/sign-off from target branch, CI-made coverage report, base = merge-base with target | fixed, pending pin |
+| G02 | 2 | blocker | gate_check.py | --change may be any folder; diff_scope then ignores it (R1-2-01) | accept | --change must be openspec/changes/<one name> | fixed, pending pin |
+| G03 | 2 | blocker | gate_check.py | base from agent flag, local branch or silent HEAD fallback (R2-2-01) | accept | default only from origin/HEAD, origin/main, origin/master; no remote and no --base = fail | fixed, pending pin |
+| G04 | 2 | blocker | gate_check.py, policy_guard | sign-off read from working tree (R2-2-02, F07) | accept | sign-off read from the base commit, like the base policy | fixed, pending pin |
+| G05 | 2 | blocker | gate_check.py, kitconst TYPES | Type line in spec.md drops gates (R1-2-05, R2-2-03) | accept | drop lists removed: Type can only tighten (no_production, flaky); a gate passes alone only when it has nothing to check | fixed, pending pin |
+| G06 | 2 | blocker | gates/coverage.py | manual numbers pass inside git; stale report passes (R1-2-02, -03, R2-2-06, R3-2-03, F05) | accept | inside git a report is required; report older than changed code fails; no changed code = nothing to check | fixed, pending pin |
+| G07 | 2 | blocker | gate_check.py | planted __pycache__ .pyc is loaded by gates (R2-2-04) | accept | gates run with -X pycache_prefix in a temp dir | fixed, pending pin |
+| G08 | 2 | blocker | cov_import.py, diff_scope.py | repo git config changes diff output (R2-2-05) | accept | git called with explicit diff flags and no external diff or textconv | fixed, pending pin |
+| G09 | 2 | major | kitconst.py, tangle.py, INSTALL.md | protected and high-risk lists drift; agent-steering files unlisted (R2-2-07, R4-2-01) | accept | one PROTECTED list incl. .mcp.json, nested CLAUDE.md, .husky, .vscode, pre-commit, GitLab CI; tangle flags any .claude/ and CLAUDE.md; INSTALL points at the list | fixed, pending pin |
+| G10 | 2 | major | forge/tangle.py | --check compares decoded text; CR swap undetected (R2-2-09) | accept | hash bytes | fixed, pending pin |
+| G11 | 2 | minor | forge/tangle.py | fence after a closed-then-reopened comment is tangled (R2-2-10) | accept | track comment state across the line | fixed, pending pin |
+| G12 | 2 | major | gates/trace_check.py | IDs read from ticket.md; prefixes testREQ_ fail; ids.txt counts (R1-2-07, R3-2-01, F01 leftover) | accept | IDs from spec.md and specs/ only; digit-only lookbehind; test files must be code or .feature | fixed, pending pin |
+| G13 | 2 | major | cov_import.py | Cobertura sources ignored; same-name files cross-match (R3-2-02, R3-2-06) | accept | join source roots; exact match first, suffix only if unique; warn on unmatched files | fixed, pending pin |
+| G14 | 2 | major | kitconst.py | globs case-sensitive; root Tests/ counts as production (R3-2-05) | accept | case-insensitive match | fixed, pending pin |
+| G15 | 2 | major | kitconst.py | docs work cannot touch README.md; tests work cannot add conftest.py (R1-2-06) | accept | *.md and conftest are not production; framework setup is its own chore | fixed, pending pin |
+| G16 | 2 | major | bootstrap.md | bootstrap writes protected policy and pollutes the first change (R1-2-04, R4-2-02) | accept | bootstrap does not copy policy (floor applies); runs on its own branch and PR | fixed, pending pin |
+| G17 | 2 | major | gates/granularity.py | characterized stays amber after Slice 0 exists (R3-2-04) | accept | green when the plan has a characterization slice | fixed, pending pin |
+| G18 | 2 | major | gates/diff_scope.py | impact scan '*' written at done turns scope off (R2-2-08) | accept part | reject bare '*' or '**' scans; plan integrity rests on CI and PR review (G01) | fixed in part, pending pin |
 | G19 | 2 | major | diff_scope | unrequested function inside an in-scope file passes (R5-2-01) | defer | needs symbol-level diff via codenav; spec 10.4 #9 is S+A, AI review covers it now | open (round 3) |
 | G20 | 2 | major | coverage | stacks with no coverage tool cannot pass done (R3 F18 residue) | defer | needs a signed policy key; decide with pilots | open (later) |
-| G21 | 2 | minor | spec_lint.py | 'Errors: None.' and '- none' fail (R3-2-07) | accept | normalise bullets and punctuation | open |
+| G21 | 2 | minor | spec_lint.py | 'Errors: None.' and '- none' fail (R3-2-07) | accept | normalise bullets and punctuation | fixed, pending pin |
 | G22 | 2 | minor | spec_lint.py | vague words in a heading excused by a nearby number (R5-2-02) | reject | heuristic edge; AI ambiguity review (10.1) covers it; chasing wordings is symptom work | closed |
 | G23 | 2 | minor | bug.md | hotfix fast-track missing (R1-2-08) | reject | Type may only tighten gates (G05); a hotfix writes a one-slice plan | closed |
 | G24 | 2 | minor | install | six manual steps, two copies of commands (R4-2-04) | defer | package stage (phase 6) ships repo-root layout | open (phase 6) |
-| G25 | 2 | minor | core/policy.yml, glossary | sign-off shape undocumented; red/amber, L0 undefined (R4-2-05, -07) | accept | three-line example and glossary rows | open |
+| G25 | 2 | minor | core/policy.yml, glossary | sign-off shape undocumented; red/amber, L0 undefined (R4-2-05, -07) | accept | three-line example and glossary rows | fixed, pending pin |
 | G26 | 2 | minor | glossary | G1-G4 and ready/done are two vocabularies (R4-2-06) | reject | glossary already maps them; spec uses both | closed |
 | G27 | 2 | minor | implement.md | approval in status.md is not proof (R4-2-08) | defer | real control is human PR review (G4) plus CI (G01) | open (later) |
-| G28 | 2 | minor | INSTALL.md, learn.md | upgrade does not re-copy commands; learn does not write module_paths (R1 notes) | accept | one line each | open |
+| G28 | 2 | minor | INSTALL.md, learn.md | upgrade does not re-copy commands; learn does not write module_paths (R1 notes) | accept | one line each | fixed, pending pin |
+
+Doc write-back added in round 2: section 10.6 and 22.4 (CI is the authoritative gate run; base, policy and sign-off from the target branch), section 8 (work type may only tighten gates; no hotfix fast track).

@@ -4,6 +4,176 @@ purpose: working source for the kit's own tests (T1 unit, T2 contract, T3 mutati
 
 Not kit components, so not in the manifest. `tests/run.sh` runs all three levels.
 
+## tests/unit/test_probe.py
+
+````python file=tests/unit/test_probe.py
+"""purpose: T1 fixtures for probe.py (ranked fallbacks, trap 10)."""
+import os
+import sys
+import unittest
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from helpers import *  # noqa: E402,F403
+
+
+
+def probe(results, needed=None, args=()):
+    payload = {"results": results}
+    if needed:
+        payload["capabilities"] = needed
+    return run_py(os.path.join(KIT, "scripts", "probe.py"), payload, ["-", *args])
+
+
+class Probe(unittest.TestCase):
+    def test_default_chosen_when_ok(self):
+        rc, out, log = probe({"serena": {"ok": True}, "ctags": {"ok": True}}, ["codenav"])
+        self.assertEqual(rc, 0, log)
+        self.assertEqual(out["capabilities"]["codenav"]["chosen"], "serena")
+
+    def test_fallback_when_no_language_server(self):
+        rc, out, _ = probe({"serena": {"ok": False, "reason": "no language server for Delphi"},
+                            "ctags": {"ok": True}}, ["codenav"])
+        c = out["capabilities"]["codenav"]
+        self.assertEqual(c["chosen"], "ctags")
+        self.assertIn("no language server for Delphi", str(c["rejected"]))
+
+    def test_nothing_works_asks(self):
+        rc, out, _ = probe({"serena": {"ok": False}}, ["codenav"])
+        self.assertEqual(rc, 1)
+        self.assertIsNone(out["capabilities"]["codenav"]["chosen"])
+
+    def test_writes_toolchain_md(self):
+        d = tempfile.mkdtemp()
+        out_md = os.path.join(d, "toolchain.md")
+        rc, _, log = probe({"serena": {"ok": False, "reason": "crash"}, "ctags": {"ok": True}}, ["codenav"], ["--out", out_md])
+        self.assertEqual(rc, 0, log)
+        with open(out_md) as fh:
+            text = fh.read()
+        self.assertIn("purpose:", text)
+        self.assertIn("ctags", text)
+        self.assertIn("crash", text)
+
+    def test_tracker_ranks_adapters(self):
+        rc, out, _ = probe({"jira": {"ok": False, "reason": "403 no write"}, "file": {"ok": True}}, ["tracker"])
+        self.assertEqual(out["capabilities"]["tracker"]["chosen"], "file")
+
+    def test_tools_without_adapter_are_unknown(self):
+        self.assertEqual(probe({}, ["repomap"])[0], 2)
+
+    def test_unknown_capability_usage_error(self):
+        self.assertEqual(probe({}, ["teleport"])[0], 2)
+
+
+if __name__ == "__main__":
+    unittest.main()
+````
+
+## tests/unit/test_spec_lint.py
+
+````python file=tests/unit/test_spec_lint.py
+"""purpose: T1 fixtures for gate spec_lint (G1 spec checks, trap 2)."""
+import os
+import sys
+import unittest
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from helpers import *  # noqa: E402,F403
+
+
+def lint(text, **policy):
+    d = tempfile.mkdtemp()
+    p = write(d, "spec.md", text)
+    return run_gate("spec_lint", {"spec": p, "policy": policy})
+
+
+class SpecLint(unittest.TestCase):
+    def test_clean_spec_passes(self):
+        rc, out, log = lint(CLEAN_SPEC)
+        self.assertEqual(rc, 0, log)
+        self.assertTrue(out["pass"])
+        self.assertEqual(out["gate"], "spec_lint")
+
+    def test_vague_words_fail(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("Coupons.", "Coupons.").replace(
+            "Orders of 100.00 or more get a 10 percent discount.", "The checkout must be fast and user-friendly."))
+        self.assertEqual(rc, 1)
+        self.assertIn("vague_word", rules(out))
+
+    def test_vague_word_with_measure_allowed(self):
+        rc, _, log = lint(CLEAN_SPEC.replace("get a 10 percent discount.", "get a 10 percent discount, priced fast (under 50 ms)."))
+        self.assertEqual(rc, 0, log)
+
+    def test_unrelated_number_does_not_excuse_vague_word(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("get a 10 percent discount.", "get a 10 percent discount and the screen is fast."))
+        self.assertIn("vague_word", rules(out))
+
+    def test_vague_words_outside_scored_sections_and_in_backticks_ignored(self):
+        text = CLEAN_SPEC.replace("Loyal customers pay full price.", "The quick fix in `SecureRandom` is slow.")
+        text = text.replace("Coupons.", "A simple redesign.")
+        rc, _, log = lint(text)
+        self.assertEqual(rc, 0, log)
+
+    def test_requirement_without_id_fails(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("### REQ-DISC-002: No", "### No"))
+        self.assertEqual(rc, 1)
+        self.assertIn("req_id", rules(out))
+
+    def test_missing_error_case_fails(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("Errors: none\n", ""))
+        self.assertIn("error_case", rules(out))
+        self.assertEqual(rc, 1)
+
+    def test_scenario_needs_given_when_then_and_level(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("  Then the price is 99.99\n  Level: unit\n", ""))
+        self.assertEqual(rc, 1)
+        self.assertTrue({"gwt", "test_level"} <= rules(out))
+
+    def test_open_questions_fail(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("## Open questions\nnone", "## Open questions\nWhich currency?"))
+        self.assertIn("open_questions", rules(out))
+
+    def test_missing_ticket_and_section_fail(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("Ticket: SHOP-12\n", "").replace("## Out of scope\n", "## Notes\n"))
+        self.assertTrue({"ticket", "section"} <= rules(out))
+
+    def test_nfr_needs_measure(self):
+        for nfr in ("Pricing is quick.", "The fee page must be secure and robust for v2."):
+            rc, out, _ = lint(CLEAN_SPEC.replace("## Non-functional\nnone", "## Non-functional\n" + nfr))
+            self.assertIn("nfr_threshold", rules(out), nfr)
+        rc, _, log = lint(CLEAN_SPEC.replace("## Non-functional\nnone", "## Non-functional\nPricing p95 under 200 ms; WCAG 2.1 AA."))
+        self.assertEqual(rc, 0, log)
+
+    def test_scenario_outline_and_error_by_then(self):
+        text = CLEAN_SPEC.replace("Scenario: error - negative total rejected", "Scenario Outline: negative totals")
+        rc, _, log = lint(text)
+        self.assertEqual(rc, 0, log)
+
+    def test_chore_needs_no_requirements(self):
+        chore = "# Change: tidy\nTicket: OPS-1\nType: chore\n\n## Problem\nOld logging.\n\n## Outcome\nOne logger.\n\n## Non-functional\nnone\n\n## Out of scope\nBehaviour.\n\n## Open questions\nnone\n"
+        rc, _, log = lint(chore)
+        self.assertEqual(rc, 0, log)
+
+    def test_too_long_fails(self):
+        rc, out, _ = lint(CLEAN_SPEC, max_spec_lines=10)
+        self.assertIn("size", rules(out))
+
+    def test_duplicate_id_fails(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("REQ-DISC-002", "REQ-DISC-001"))
+        self.assertIn("duplicate_id", rules(out))
+
+    def test_missing_file_is_usage_error(self):
+        rc, _, _ = run_gate("spec_lint", {"spec": "/nonexistent/spec.md"})
+        self.assertEqual(rc, 2)
+
+
+    def test_none_with_punctuation_or_bullet(self):
+        text = CLEAN_SPEC.replace("Errors: none", "Errors: None.").replace("## Open questions\nnone", "## Open questions\n- None")
+        rc, _, log = lint(text)
+        self.assertEqual(rc, 0, log)
+
+
+if __name__ == "__main__":
+    unittest.main()
+````
+
 ## tests/unit/test_state.py
 
 ````python file=tests/unit/test_state.py
@@ -64,77 +234,6 @@ class State(unittest.TestCase):
     def test_not_a_repo(self):
         rc, s = self.state(tempfile.mkdtemp())
         self.assertIsNone(s["branch"])
-
-
-if __name__ == "__main__":
-    unittest.main()
-````
-
-## tests/unit/test_trace_check.py
-
-````python file=tests/unit/test_trace_check.py
-"""purpose: T1 fixtures for gate trace_check (requirement to test, trap 6; F01, F02)."""
-import os
-import sys
-import unittest
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from helpers import *  # noqa: E402,F403
-
-
-
-class Trace(unittest.TestCase):
-    def setUp(self):
-        self.root, self.ch = make_repo()
-
-    def check(self, **extra):
-        payload = {"spec_dirs": [self.ch]}
-        payload.update(extra)
-        return run_gate("trace_check", payload, cwd=self.root)
-
-    def test_every_requirement_tested_passes(self):
-        rc, out, log = self.check()
-        self.assertEqual(rc, 0, log)
-
-    def test_requirement_without_test_fails(self):
-        write(self.root, "tests/test_discount.py", "# REQ-DISC-001\n")
-        rc, out, _ = self.check()
-        self.assertEqual(rc, 1)
-        self.assertIn("REQ-DISC-002", str(out["findings"]))
-
-    def test_id_in_production_code_does_not_count(self):
-        write(self.root, "tests/test_discount.py", "# REQ-DISC-001\n")
-        write(self.root, "src/discount.py", "# REQ-DISC-002\n")
-        self.assertEqual(self.check()[0], 1)
-
-    def test_test_dirs_input_is_ignored(self):
-        write(self.root, "tests/test_discount.py", "# REQ-DISC-001\n")
-        self.assertEqual(self.check(test_dirs=["src", "openspec"])[0], 1)
-
-    def test_underscore_ids_in_java_and_csharp_names(self):
-        os.remove(os.path.join(self.root, "tests/test_discount.py"))
-        write(self.root, "src/test/java/shop/DiscountTest.java", "void REQ_DISC_001_tenPercent() {}\n")
-        write(self.root, "Shop.Tests/DiscountTests.cs", "public void Req_Disc_002_NoDiscount() {}\n")
-        rc, _, log = self.check()
-        self.assertEqual(rc, 0, log)
-
-    def test_feature_tags_count(self):
-        os.remove(os.path.join(self.root, "tests/test_discount.py"))
-        write(self.root, "features/discount.feature", "@REQ-DISC-001 @REQ-DISC-002\nFeature: x\n")
-        self.assertEqual(self.check()[0], 0)
-
-    def test_no_ids_in_spec_fails(self):
-        write(self.root, self.ch + "/spec.md", "nothing here\n")
-        self.assertEqual(self.check()[0], 1)
-
-    def test_no_test_files_fails(self):
-        os.remove(os.path.join(self.root, "tests/test_discount.py"))
-        self.assertEqual(self.check()[0], 1)
-
-    def test_orphan_test_id_warns_only(self):
-        write(self.root, "tests/test_x.py", "# REQ-OTHER-009\n")
-        rc, out, _ = self.check()
-        self.assertEqual(rc, 0)
-        self.assertIn("orphan_id", rules(out))
 
 
 if __name__ == "__main__":

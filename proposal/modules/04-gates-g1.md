@@ -50,7 +50,7 @@ def requirements(body):
     for n, line in body:
         if line.startswith("### "):
             reqs.append({"title": line[4:].strip(), "line": n, "errors_none": False, "scenarios": []})
-        elif reqs and line.strip().lower() == "errors: none":
+        elif reqs and re.fullmatch(r"errors:\s*none\.?", line.strip().lower()):
             reqs[-1]["errors_none"] = True
         elif reqs and SCENARIO.match(line.strip()):
             reqs[-1]["scenarios"].append({"title": line.strip().split(":", 1)[1].strip(), "line": n, "body": []})
@@ -108,11 +108,11 @@ def check(p):
         if s not in secs and not (no_reqs and s == "Requirements"):
             f.append(finding("section", "missing section '## %s'" % s))
     for n, line in secs.get("Open questions", []):
-        if line.strip() and line.strip().lower().rstrip(".") not in NONE:
+        if line.strip() and line.strip().lstrip("-* ").lower().rstrip(".") not in NONE:
             f.append(finding("open_questions", "open question must be resolved: %s" % line.strip(), "line %d" % n))
     for n, line in secs.get("Non-functional", []):
         t = line.strip()
-        if t and t.lower().rstrip(".") not in NONE and not MEASURE.search(t) and not STANDARD.search(t):
+        if t and t.lstrip("-* ").lower().rstrip(".") not in NONE and not MEASURE.search(t) and not STANDARD.search(t):
             f.append(finding("nfr_threshold", "NFR needs a number or a named standard: %s" % t, "line %d" % n))
     for name in SCORED & set(secs):
         for n, line in secs[name]:
@@ -163,7 +163,7 @@ TESTABLE = {"yes": "green", "stub": "amber"}
 SIZE_ONLY = ("lines", "symbols", "files")
 
 
-def score(s, pol):
+def score(s, pol, has_slice0=False):
     reasons, char = [], s.get("kind") == "characterization"
     for m, default in DEFAULTS.items():
         if char and m in SIZE_ONLY:
@@ -176,7 +176,7 @@ def score(s, pol):
             reasons.append(("red", "%s %s > %s" % (m, v, amber)))
         elif v > green:
             reasons.append(("amber", "%s %s > %s" % (m, v, green)))
-    u = "green" if char else UNTESTED.get(s.get("untested"), "red")
+    u = "green" if char or (has_slice0 and s.get("untested") == "characterized") else UNTESTED.get(s.get("untested"), "red")
     if u != "green":
         reasons.append((u, "untested code: %s (characterization slice must come first)" % s.get("untested")))
     t = TESTABLE.get(s.get("testable"), "red")
@@ -195,8 +195,9 @@ def check(p):
     if not slices:
         return [finding("no_slices", "no slice plan given")], {"slices": []}
     f, out = [], []
+    has_slice0 = any(s.get("kind") == "characterization" for s in slices)
     for s in slices:
-        overall, split, reasons = score(s, pol)
+        overall, split, reasons = score(s, pol, has_slice0)
         out.append({"id": s.get("id"), "score": overall, "reasons": reasons})
         if split:
             f.append(finding("split", "split this slice: " + "; ".join(reasons), str(s.get("id"))))

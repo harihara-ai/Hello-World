@@ -37,7 +37,8 @@ def run_py(path, payload=None, args=(), cwd=None):
 
 
 def run_gate(name, payload, cwd=None):
-    return run_py(gate_path(name), payload, ["-"], cwd)
+    """cwd defaults to a fresh non-git temp dir so a gate never sees the repo the tests live in."""
+    return run_py(gate_path(name), payload, ["-"], cwd or tempfile.mkdtemp())
 
 
 def rules(out):

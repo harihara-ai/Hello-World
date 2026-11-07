@@ -12,18 +12,19 @@ Section 10.4 check 6. Trap 6. Only test files count; underscore IDs match (round
 #!/usr/bin/env python3
 """purpose: every REQ ID in the change's spec appears in at least one test file (traceability, G3 check 6).
 
-Input: {"spec_dirs": [change folder]}. Test files are found by the fixed test globs (kitconst), never by input,
-so an ID in production code or docs does not count. REQ-AREA-001, REQ_AREA_001 and Req_Area_001 are one ID.
+Input: {"spec_dirs": [change folder], "type": work type}. Requirement IDs come from spec.md and specs/*.md only
+(never the fetched ticket). Test files are code or .feature files matching the fixed test globs (kitconst), so
+an ID in production code, docs or a text file does not count. REQ-AREA-001, REQ_AREA_001, testReq_Area_001 match.
 """
 import os
 import re
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
 from gateio import UsageError, finding, run  # noqa: E402
-from kitconst import SKIP_DIRS, is_test_file  # noqa: E402
+from kitconst import NO_REQUIREMENT_TYPES, SKIP_DIRS, TEST_EXT, is_test_file  # noqa: E402
 
 SPEC_ID = re.compile(r"REQ-[A-Z0-9]+-[0-9]+")
-TEST_ID = re.compile(r"(?<![A-Za-z0-9])REQ[-_]([A-Za-z0-9]+?)[-_]([0-9]+)(?![0-9])", re.I)
+TEST_ID = re.compile(r"(?<![0-9])REQ[-_]([A-Za-z0-9]+?)[-_]([0-9]+)(?![0-9])", re.I)
 
 
 def norm(area, num):
@@ -33,11 +34,12 @@ def norm(area, num):
 def spec_ids(dirs):
     found = set()
     for d in dirs:
-        for root, _d, files in os.walk(d):
-            for name in files:
-                if name.endswith(".md"):
-                    with open(os.path.join(root, name), encoding="utf-8", errors="ignore") as fh:
-                        found |= {norm(*i.split("-")[1:]) for i in SPEC_ID.findall(fh.read())}
+        specs = [os.path.join(d, "spec.md")]
+        specs += [os.path.join(r, n) for r, _d, fs in os.walk(os.path.join(d, "specs")) for n in fs if n.endswith(".md")]
+        for path in specs:
+            if os.path.isfile(path):
+                with open(path, encoding="utf-8", errors="ignore") as fh:
+                    found |= {norm(*i.split("-")[1:]) for i in SPEC_ID.findall(fh.read())}
     return found
 
 
@@ -47,7 +49,7 @@ def test_ids():
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
         for name in files:
             rel = os.path.relpath(os.path.join(root, name), ".").replace(os.sep, "/")
-            if not is_test_file(rel):
+            if not is_test_file(rel) or not rel.lower().endswith(TEST_EXT):
                 continue
             n += 1
             with open(rel, encoding="utf-8", errors="ignore") as fh:
@@ -58,6 +60,8 @@ def test_ids():
 def check(p):
     ids = spec_ids([d for d in p.get("spec_dirs", []) if os.path.isdir(d)])
     if not ids:
+        if p.get("type") in NO_REQUIREMENT_TYPES:
+            return [finding("nothing_to_check", "no requirements in a %s change" % p["type"], "", "warn")], {}
         return [finding("no_ids", "no REQ IDs found in %s" % p.get("spec_dirs"))], {}
     tested, n = test_ids()
     if not n:
@@ -79,59 +83,69 @@ Section 10.4 check 5. Trap 8. Reads the coverage report and git diff itself (rou
 #!/usr/bin/env python3
 """purpose: changed-line coverage at or above the threshold, and overall coverage not dropping beyond tolerance.
 
-Preferred input: {"report": coverage report path, "base": git ref, "baseline_total": pct, "policy": {...}}.
-The gate reads the report and git diff itself. Manual input {changed_lines, covered_lines, baseline_total,
-current_total} is accepted outside git and is flagged as manual evidence.
+In git: {"report": coverage report path, "base": git ref, "baseline_total": pct, "policy": {...}}. The gate
+reads the report and git diff itself; no production code changed means nothing to check. A report older than
+the changed code fails. Outside git only (fixtures): {changed_lines, covered_lines, baseline_total, current_total}.
 """
+import subprocess
 import os
 import re
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
 from gateio import UsageError, finding, run  # noqa: E402
 import cov_import  # noqa: E402
-from kitconst import is_test_file  # noqa: E402
-
-CODE_EXT = (".py", ".php", ".java", ".kt", ".cs", ".vb", ".js", ".ts", ".tsx", ".jsx", ".go", ".rb",
-            ".pas", ".dpr", ".c", ".cpp", ".h", ".scala", ".swift", ".rs")
+from kitconst import CODE_EXT, is_test_file  # noqa: E402
 
 
-def from_report(p):
-    rep = cov_import.parse_report(p["report"])
-    changed, covered = {}, {}
-    for f, lines in cov_import.changed_lines(p.get("base", "HEAD")).items():
-        if is_test_file(f) or not f.endswith(CODE_EXT):
-            continue
-        key = cov_import.match(f, rep["instrumented"])
-        changed[f] = sorted(lines & rep["instrumented"][key]) if key else sorted(lines)
-        covered[f] = sorted(rep["covered"].get(key, set())) if key else []
-    return changed, covered, rep["total"]
+def in_git():
+    p = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], capture_output=True, text=True)
+    return p.stdout.strip() == "true"
+
+
+def from_git(p):
+    if "base" not in p:
+        raise UsageError("need 'base' in a git repo")
+    code = {f: l for f, l in cov_import.changed_lines(p["base"]).items()
+            if not is_test_file(f) and f.lower().endswith(CODE_EXT)}
+    if not code:
+        return [finding("nothing_to_check", "no production code changed", "", "warn")], None
+    if "report" not in p or "baseline_total" not in p:
+        return [finding("report_required", "code changed: give a coverage report and baseline_total")], None
+    newest = max((os.path.getmtime(f) for f in code if os.path.exists(f)), default=0)
+    if os.path.getmtime(p["report"]) < newest:
+        return [finding("stale_report", "the coverage report is older than the changed code; re-run the tests")], None
+    rep, f, changed, covered = cov_import.parse_report(p["report"]), [], {}, {}
+    for path, lines in code.items():
+        key = cov_import.match(path, rep["instrumented"])
+        if not key:
+            f.append(finding("unmatched_file", "%s is not in the report; counted as uncovered" % path, path, "warn"))
+        changed[path] = sorted(lines & rep["instrumented"][key]) if key else sorted(lines)
+        covered[path] = sorted(rep["covered"].get(key, set())) if key else []
+    return f, (changed, covered, rep["total"])
 
 
 def check(p):
-    f = []
-    if "report" in p:
-        if "baseline_total" not in p:
-            return [finding("missing_input", "no baseline_total from the base branch run")], {}
-        changed, covered, current = from_report(p)
+    if in_git():
+        f, data = from_git(p)
+        if data is None:
+            return f, {}
+        changed, covered, current = data
     else:
         missing = [k for k in ("changed_lines", "covered_lines", "baseline_total", "current_total") if k not in p]
         if missing:
             return [finding("missing_input", "no coverage evidence: %s" % ", ".join(missing))], {}
         changed, covered, current = p["changed_lines"], p["covered_lines"], p["current_total"]
-        f.append(finding("manual_evidence", "coverage numbers were written by hand; prefer a report file", "", "warn"))
+        f = [finding("manual_evidence", "coverage numbers were written by hand (outside git only)", "", "warn")]
     pol = p.get("policy", {})
     threshold = float(pol.get("min_changed_line_coverage", 80))
-    total = hit = 0
-    for path, lines in changed.items():
-        total += len(set(lines))
-        hit += len(set(lines) & set(covered.get(path, [])))
+    total = sum(len(set(v)) for v in changed.values())
+    hit = sum(len(set(v) & set(covered.get(k, []))) for k, v in changed.items())
     pct = round(100.0 * hit / total, 1) if total else 100.0
     if not total:
-        f.append(finding("no_changed_lines", "no changed production lines were measured", "", "warn"))
+        f.append(finding("no_changed_lines", "no changed executable lines were measured", "", "warn"))
     if pct < threshold:
         f.append(finding("changed_lines", "changed-line coverage %.1f%% is below %.1f%%" % (pct, threshold)))
-    drop = float(p["baseline_total"]) - float(current)
-    if drop > float(pol.get("max_total_drop", 0.1)) + 1e-9:
+    if float(p["baseline_total"]) - float(current) > float(pol.get("max_total_drop", 0.1)) + 1e-9:
         f.append(finding("overall_drop", "overall coverage fell from %s to %s" % (p["baseline_total"], current)))
     return f, {"changed_line_coverage": pct, "current_total": current}
 
@@ -168,7 +182,7 @@ def git_changed(base):
     if not re.fullmatch(r"[\w./~^@-]+", base) or base.startswith("-"):
         raise UsageError("bad base ref")
     names = set()
-    for cmd in (["git", "diff", "--name-only", "--no-renames", base, "--"],
+    for cmd in (["git", "-c", "core.quotePath=false", "diff", "--no-ext-diff", "--name-only", "--no-renames", base, "--"],
                 ["git", "ls-files", "--others", "--exclude-standard"]):
         out = subprocess.run(cmd, capture_output=True, text=True)
         if out.returncode != 0:
@@ -189,10 +203,13 @@ def check(p):
         raise UsageError("need 'base' in a git repo, or 'changed_files' outside git")
     ch = p.get("change_dir", "").rstrip("/")
     changed = [c for c in changed if not (ch and c.startswith(ch + "/")) and "__pycache__/" not in c]
+    f += [finding("protected_path", "a human changes this file in its own PR: %s" % c, c) for c in changed if matches(c, PROTECTED)]
     scan = p.get("impact_scan", [])
     if not scan:
         return f + [finding("no_impact_scan", "no impact scan given")], {}
-    f += [finding("protected_path", "a human changes this file in its own PR: %s" % c, c) for c in changed if matches(c, PROTECTED)]
+    broad = [g for g in scan if g.strip("*/") == ""]
+    if broad:
+        return f + [finding("scan_too_broad", "impact scan must name files or folders, not %s" % broad)], {}
     f += [finding("outside_scan", "changed but not in the impact scan: %s" % c, c) for c in changed if not matches(c, scan)]
     if p.get("no_production"):
         f += [finding("production_change", "this work item may not change production files: %s" % c, c)
@@ -202,74 +219,4 @@ def check(p):
 
 if __name__ == "__main__":
     sys.exit(run("diff_scope", check))
-````
-
-## gate.policy_guard
-
-Section 10.6. Trap 12. gate_check always compares the repo policy with the kit floor.
-
-````python file=kit/gates/policy_guard.py
-#!/usr/bin/env python3
-"""purpose: refuse any policy change that loosens the floor unless a human sign-off names that key.
-
-Input: {"old": floor.yml, "baselines": [base-commit policy.yml], "new": policy.yml, "signoff": signoff.json}.
-min_* may only rise, max_* may only fall, lists may only grow, keys may not be removed, against the floor and
-every baseline. Sign-off JSON: {approved_by, reason, keys: {key: approved value}}.
-"""
-import json
-import os
-import re
-import sys
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
-from gateio import UsageError, finding, run  # noqa: E402
-import policy  # noqa: E402
-
-
-def loosened(old, new):
-    out = []
-    for k, ov in old.items():
-        if k not in new:
-            out.append((k, "removed"))
-            continue
-        nv = new[k]
-        if k.startswith(("min_", "max_")):
-            a = ov if isinstance(ov, list) else [ov]
-            b = nv if isinstance(nv, list) else [nv]
-            if len(a) != len(b) or not all(isinstance(x, (int, float)) for x in b):
-                out.append((k, "changed shape"))
-            elif any((y < x) if k.startswith("min_") else (y > x) for x, y in zip(a, b)):
-                out.append((k, "%s -> %s" % (ov, nv)))
-        elif isinstance(ov, list):
-            gone = [x for x in ov if x not in (nv if isinstance(nv, list) else [])]
-            if gone:
-                out.append((k, "removed %s" % gone))
-    return out
-
-
-def signed(path):
-    if not path or not os.path.isfile(path):
-        return {}
-    with open(path, encoding="utf-8") as fh:
-        s = json.load(fh)
-    keys = s.get("keys")
-    if not str(s.get("approved_by", "")).strip() or not str(s.get("reason", "")).strip() or not isinstance(keys, dict):
-        return {}
-    return keys
-
-
-def check(p):
-    try:
-        olds = [policy.load(x) for x in [p["old"]] + p.get("baselines", [])]
-        new = policy.load(p["new"])
-    except ValueError as e:
-        return [finding("unparseable", "policy cannot be parsed: %s" % e)], {}
-    ok, f = signed(p.get("signoff")), []
-    for k, why in sorted({lw for old in olds for lw in loosened(old, new)}):
-        if k not in ok or ok[k] != new.get(k):
-            f.append(finding("loosened", "%s loosened (%s) without a human sign-off for that value" % (k, why), k))
-    return f, {}
-
-
-if __name__ == "__main__":
-    sys.exit(run("policy_guard", check))
 ````

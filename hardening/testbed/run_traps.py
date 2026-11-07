@@ -3,7 +3,8 @@
 
 Usage: run_traps.py [--kit workspace] [--json]
 Each case copies its repo to a temp dir, commits a base without the repo's change files (testbed.json), puts
-the change back, applies overlay/ files, string patches and moves, then runs the real kit in git mode.
+the change back, applies overlay/ files, string patches and moves (and commits them if the case says so),
+then runs the real kit in git mode with --base set to the base commit, as CI does.
 Exit 0 when every case behaves as expected, 1 otherwise. Writes nothing inside the repo.
 """
 import argparse
@@ -22,8 +23,8 @@ PY = [sys.executable, "-I", "-B"]
 
 
 def git(tmp, *args):
-    subprocess.run(["git", "-C", tmp, "-c", "user.email=t@t", "-c", "user.name=t", *args],
-                   capture_output=True, text=True, check=True)
+    return subprocess.run(["git", "-C", tmp, "-c", "user.email=t@t", "-c", "user.name=t", *args],
+                          capture_output=True, text=True, check=True).stdout.strip()
 
 
 def prepare(repo, case_dir, case, kit):
@@ -42,6 +43,8 @@ def prepare(repo, case_dir, case, kit):
     git(tmp, "init", "-q", "-b", "main")
     git(tmp, "add", "-A")
     git(tmp, "commit", "-qm", "base")
+    with open(os.path.join(os.path.dirname(tmp), "base"), "w") as fh:
+        fh.write(git(tmp, "rev-parse", "HEAD"))
     shutil.copytree(aside, tmp, dirs_exist_ok=True)
     overlay = os.path.join(case_dir, "overlay")
     if os.path.isdir(overlay):
@@ -59,15 +62,22 @@ def prepare(repo, case_dir, case, kit):
     for src, dst in case.get("move", []):
         os.makedirs(os.path.dirname(os.path.join(tmp, dst)), exist_ok=True)
         os.rename(os.path.join(tmp, src), os.path.join(tmp, dst))
+    for report in glob.glob(os.path.join(tmp, "openspec", "changes", "*", "evidence", "coverage.xml")):
+        os.utime(report)  # CI writes the report after the tests run, so it is newer than the code
+    if case.get("commit"):
+        git(tmp, "add", "-A")
+        git(tmp, "commit", "-qm", "agent commits its work")
     return tmp
 
 
 def run_gate_check(tmp, case, kit):
     stages = ["ready", "done"] if case["stage"] == "both" else [case["stage"]]
+    with open(os.path.join(os.path.dirname(tmp), "base")) as fh:
+        base = fh.read().strip()
     failed, found = [], {}
     for stage in stages:
         p = subprocess.run(PY + [os.path.join(kit, "kit/scripts/gate_check.py"), stage, "--repo", tmp,
-                                 "--change", case["change"]], capture_output=True, text=True)
+                                 "--change", case["change"], "--base", base], capture_output=True, text=True)
         try:
             out = json.loads(p.stdout)
         except ValueError:

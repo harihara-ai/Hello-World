@@ -22,6 +22,7 @@ purpose: north star rules loaded in every session (L0). Short on purpose; detail
 ## The floor (never lowered by the AI)
 - Rules in `kit/core/rules.md` always apply. If a rule blocks you, stop and ask.
 - Gates: `python3 kit/scripts/gate_check.py ready|done --change openspec/changes/<name>`. A failed gate is never waived.
+  Local runs are early feedback; the CI run on the PR is the one that counts (`kit/INSTALL.md`).
 - Thresholds live in `docs/ai/policy.yml` (the kit floor `kit/core/policy.yml` applies when it is missing). Raise them freely.
 - Lowering a threshold needs `docs/ai/policy-signoff.json`, written by a human in their own PR. You never edit policy, sign-off, `kit/`, `.claude/` or `CLAUDE.md`: `gate.diff_scope` fails if you do.
 
@@ -84,6 +85,8 @@ purpose: shared terms used by every component; new terms are added here, not red
 | observed / inferred / confirmed | Confidence of a fact. Only `confirmed` may become a spec |
 | Playbook | Steps for one work item type |
 | Capability / adapter | Interface for a tool kind / one tool that implements it |
+| green / amber / red | Granularity score of a slice: fine / review / must split. Two ambers also mean split |
+| L0 to L3 | Knowledge load levels: always loaded, module card, symbols, raw source |
 ````
 
 ## core.state
@@ -124,7 +127,9 @@ Sections 10.6, 11.3, 16.2. Prefix rule (min_/max_/lists) is what gate.policy_gua
 ````yaml file=kit/core/policy.yml
 # purpose: default floor thresholds; repos may raise them, lowering needs a recorded human sign-off.
 # Prefix rule (read by gate.policy_guard): min_* may only go up, max_* may only go down,
-# list values may only grow. Copy to docs/ai/policy.yml in the target repo.
+# list values may only grow. A human may copy this to docs/ai/policy.yml to raise values; without it the floor applies.
+# Lowering a value needs docs/ai/policy-signoff.json, merged by a human before the change, for example:
+#   {"approved_by": "Dana Lee", "reason": "legacy module, ADR-7", "keys": {"min_changed_line_coverage": 60}}
 version: 1
 min_changed_line_coverage: 80
 max_total_drop: 0.1
@@ -149,15 +154,29 @@ Round 1 F11: where kit files go in a target repo, and what CODEOWNERS must prote
 ````md file=kit/INSTALL.md
 # Install the kit into a repo
 
-purpose: the one place that says where kit files go in a target repo and what a human must protect.
+purpose: the one place that says where kit files go in a target repo, what a human protects, and how CI enforces the gates.
 
+## Files
 1. Copy `kit/` to the repo root as `kit/`, and `kit.manifest.yml` to the root.
 2. Copy `kit/.claude/commands/*.md` to `.claude/commands/` (Claude Code reads commands only there).
-3. Add the line `@kit/CLAUDE.md` to the root `CLAUDE.md` (create it if missing). Claude Code loads the root file.
+3. Add the line `@kit/CLAUDE.md` to the root `CLAUDE.md` (create it if missing).
 4. Needs `python3` (3.8 or later) and `git`. Nothing is installed; no hooks are added.
-5. Add to `CODEOWNERS` so a human reviews them: `docs/ai/policy.yml`, `docs/ai/policy-signoff.json`, `kit/`, `.claude/`, `CLAUDE.md`.
-   `gate.diff_scope` already fails any AI change that touches these; CODEOWNERS stops the same change arriving another way.
-6. Open Claude Code and run `/bootstrap`, then `/genie`.
+5. Open Claude Code and run `/bootstrap` on its own branch; a human merges its PR. Then use `/genie`.
 
-Upgrade: replace `kit/` and `kit.manifest.yml` in one human PR, then run `/refresh`.
+## What a human protects
+Put every pattern in `PROTECTED` in `kit/scripts/kitconst.py` into `CODEOWNERS`. That one list is what
+`gate.diff_scope` refuses in an AI change; CODEOWNERS stops the same change arriving another way.
+
+## CI is the gate that counts
+A local `gate_check` run is early feedback: the agent controls its own working copy. The authoritative run is
+a CI job on every PR, with nothing taken from the PR branch except the change itself:
+1. Fresh clone; fetch the target branch.
+2. `git checkout origin/<target> -- kit kit.manifest.yml docs/ai/policy.yml docs/ai/policy-signoff.json`
+   (the kit, policy and sign-off as approved, not as the PR left them).
+3. Run the test suite with coverage; CI writes the report path into `inputs/coverage.json`.
+4. `python3 kit/scripts/gate_check.py done --change openspec/changes/<name> --base origin/<target>`
+5. Make the job a required check. The human still reviews `spec.md`, `slices.md` and the impact scan in the PR.
+
+## Upgrade
+Replace `kit/` and `kit.manifest.yml` in one human PR, copy the commands again (step 2), then run `/refresh`.
 ````

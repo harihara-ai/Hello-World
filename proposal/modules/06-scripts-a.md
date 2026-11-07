@@ -60,35 +60,40 @@ def run(gate, check, argv=None):
 Round 1: fixed lists (test globs, protected paths, per-type gates) that policy cannot loosen.
 
 ````python file=kit/scripts/kitconst.py
-"""purpose: shared constants for gates: test-file globs, protected paths and the fixed per-type gate table.
+"""purpose: shared constants for gates: test-file globs, protected paths, code extensions and the per-type rules.
 
-Not policy: repos cannot change these through policy.yml, so a gate cannot be loosened by editing a list.
+Not policy: repos cannot change these through policy.yml. Matching is case-insensitive.
 """
 import fnmatch
 
 TEST_GLOBS = ["tests/*", "test/*", "spec/*", "features/*", "*/tests/*", "*/test/*", "src/test/*",
-              "*.Tests/*", "*/Tests/*", "*UnitTests*/*", "*IntegrationTests*/*", "*_test.*", "*.test.*",
-              "*_spec.*", "*Test.*", "*Tests.*", "*Spec.*", "test_*", "*/test_*", "*.feature", "safety-net/*"]
-NOT_PRODUCTION = TEST_GLOBS + ["openspec/*", "docs/*"]
-PROTECTED = ["docs/ai/policy.yml", "docs/ai/policy-signoff.json", "kit/*", "kit.manifest.yml",
-             ".claude/*", "CLAUDE.md", ".github/*"]
+              "*.tests/*", "*unittests*/*", "*integrationtests*/*", "*_test.*", "*.test.*", "*_spec.*",
+              "*test.*", "*tests.*", "*spec.*", "test_*", "*/test_*", "*.feature", "*conftest.*", "safety-net/*"]
+NOT_PRODUCTION = TEST_GLOBS + ["openspec/*", "docs/*", "*.md"]
+# Files that steer the agent or run on checkout or in CI. A human changes them in their own PR.
+# Keep in step with HIGH_RISK in forge/tangle.py.
+PROTECTED = ["docs/ai/policy.yml", "docs/ai/policy-signoff.json", "kit/*", "kit.manifest.yml", "claude.md",
+             "*/claude.md", ".claude/*", "*/.claude/*", ".mcp.json", "*/.mcp.json", ".github/*", ".gitlab-ci.yml",
+             ".husky/*", ".vscode/*", ".pre-commit-config.yaml", ".git/*"]
 SKIP_DIRS = {".git", "node_modules", "vendor", "openspec", "docs", "kit", "dist", "build", "bin", "obj",
              "__pycache__", ".venv", "venv", "target"}
+CODE_EXT = (".py", ".php", ".java", ".kt", ".cs", ".vb", ".js", ".ts", ".tsx", ".jsx", ".go", ".rb",
+            ".pas", ".dpr", ".c", ".cpp", ".h", ".scala", ".swift", ".rs")
+TEST_EXT = CODE_EXT + (".feature", ".robot")
 
-# Fixed per work-item type: gates removed from or added to the floor list, and whether production files may change.
+# Per work-item type. A type can only tighten: forbid production changes or add a gate, never drop one.
 TYPES = {
-    "story": {}, "nfr": {}, "bug": {}, "hotfix": {},
-    "chore": {"drop": ["trace_check"]},
-    "refactor": {"drop": ["trace_check"]},
-    "spike": {"drop": ["trace_check", "coverage", "granularity"], "no_production": True},
-    "docs": {"drop": ["trace_check", "coverage", "granularity"], "no_production": True},
-    "tests": {"drop": ["coverage"], "add": ["flaky"], "no_production": True},
+    "story": {}, "nfr": {}, "bug": {}, "hotfix": {}, "chore": {}, "refactor": {},
+    "spike": {"no_production": True},
+    "docs": {"no_production": True},
+    "tests": {"add": ["flaky"], "no_production": True},
 }
 NO_REQUIREMENT_TYPES = {"chore", "refactor", "spike", "docs"}
 
 
 def matches(path, globs):
-    return any(fnmatch.fnmatchcase(path, g) for g in globs)
+    p = path.lower()
+    return any(fnmatch.fnmatchcase(p, g.lower()) for g in globs)
 
 
 def is_test_file(path):
@@ -105,9 +110,14 @@ Round 1 F05: Cobertura, JaCoCo, clover and lcov readers plus git diff hunks.
 parse_report(path) -> {"covered": {file: {lines}}, "instrumented": {file: {lines}}, "total": pct}
 parse_diff(text) -> {file: {added or changed line numbers}}; changed_lines(base) runs git for it.
 """
+import os
 import re
 import subprocess
 import xml.etree.ElementTree as ET
+
+# Explicit flags so repo or user git config (noprefix, external diff, textconv, binary attributes) cannot change output.
+GIT_DIFF = ["git", "-c", "diff.noprefix=false", "-c", "diff.mnemonicPrefix=false", "-c", "core.quotePath=false",
+            "diff", "--no-ext-diff", "--no-textconv", "--text", "--src-prefix=a/", "--dst-prefix=b/"]
 
 
 def _add(r, f, n, hit):
@@ -148,9 +158,15 @@ def _xml(root):
         if m is not None and int(m.get("statements", "0")):
             r["total"] = round(100.0 * int(m.get("coveredstatements")) / int(m.get("statements")), 2)
     elif root.tag == "coverage":  # Cobertura (coverlet, coverage.py, PHPUnit, istanbul)
-        for cl in root.iter("class"):
-            for ln in cl.iter("line"):
-                _add(r, cl.get("filename"), int(ln.get("number")), int(ln.get("hits", "0")) > 0)
+        sources = [s.text.strip() for s in root.iter("source") if s.text and s.text.strip()]
+        packages = list(root.iter("package")) or [root]
+        for i, pkg in enumerate(packages):
+            src = sources[i] if len(sources) == len(packages) else (sources[0] if len(sources) == 1 else "")
+            for cl in pkg.iter("class"):
+                f = cl.get("filename")
+                f = os.path.join(src, f).replace("\\", "/") if src and not os.path.isabs(f) else f
+                for ln in cl.iter("line"):
+                    _add(r, f, int(ln.get("number")), int(ln.get("hits", "0")) > 0)
         if root.get("line-rate") is not None:
             r["total"] = round(100.0 * float(root.get("line-rate")), 2)
     else:
@@ -174,12 +190,13 @@ def parse_report(path):
 
 
 def match(repo_path, report_paths):
-    """Report paths may be absolute, or relative to a source root (JaCoCo package paths)."""
-    for p in report_paths:
-        q = p.replace("\\", "/")
-        if q == repo_path or q.endswith("/" + repo_path) or repo_path.endswith("/" + q.lstrip("/")):
-            return p
-    return None
+    """Exact path first; else a unique suffix match (absolute paths, JaCoCo package paths). Ambiguous = None."""
+    paths = list(report_paths)
+    if repo_path in paths:
+        return repo_path
+    hits = [p for p in paths if p.replace("\\", "/").endswith("/" + repo_path)
+            or repo_path.endswith("/" + p.replace("\\", "/").lstrip("/"))]
+    return hits[0] if len(hits) == 1 else None
 
 
 def parse_diff(text):
@@ -198,7 +215,7 @@ def parse_diff(text):
 def changed_lines(base):
     if not re.fullmatch(r"[\w./~^@-]+", base) or base.startswith("-"):
         raise ValueError("bad base ref")
-    diff = subprocess.run(["git", "diff", "-U0", "--no-renames", base, "--"], capture_output=True, text=True)
+    diff = subprocess.run(GIT_DIFF + ["-U0", "--no-renames", base, "--"], capture_output=True, text=True)
     if diff.returncode != 0:
         raise ValueError("git diff failed: %s" % diff.stderr.strip())
     out = parse_diff(diff.stdout)

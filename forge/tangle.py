@@ -138,7 +138,7 @@ def main():
         if b["path"] in seen:
             errors.append("%s: duplicate path %s (also at %s)" % (b["origin"], b["path"], seen[b["path"]]))
         seen[b["path"]] = b["origin"]
-        if is_high_risk(b["path"]) and not a.approve_high_risk:
+        if a.pin and is_high_risk(b["path"]) and not a.approve_high_risk:  # approval is part of the human pin
             errors.append("%s: high-risk file %s needs --approve-high-risk" % (b["origin"], b["path"]))
     if errors:
         print("REFUSED:\n  " + "\n  ".join(errors))
