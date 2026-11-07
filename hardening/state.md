@@ -1,13 +1,13 @@
 purpose: loop state read at the start of every round.
 
-round: 5 (frozen at 57e537d; verification only)
+round: 6 (frozen at f571848; final verification, round cap)
 phase: 4
 certification_target: Silver
 round_cap: 6
-trap_score: 21/21 cases (critical 16/16, other 5/5, false alarms 0) on round 5 fixes, scratch tangle (not yet pinned)
+trap_score: 21/21 cases (critical 16/16, other 5/5, false alarms 0) on pinned workspace
 trap_target: all critical, 95 percent others
 new_findings_threshold: 2 per round
-open_blockers: 0 after round 5 fixes (3 blockers and 5 majors raised in round 5, all fixed; pending pin)
+open_blockers: 0 (round 5 fixes pinned)
 open_majors: deferred G19 (symbol-level scope), G20 (no-coverage stacks), F17; G18 in part
 consecutive_clean_rounds: 0 (round 5 had 3 blockers)
 doc_revision_synced: not synced (write-back list in findings.md)
