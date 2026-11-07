@@ -35,6 +35,15 @@ Repos (owner choice): legacy `harihara-ai/commons-lang` (Java, Maven, JaCoCo, PI
   (SimpleDateFormat MDT/CDT/PDT vs FastDateFormat MST/CST/PST, US zones, 2026-11-07, runner Temurin 21). Same suite
   passed locally (OpenJDK 21.0.12). Owner chose quarantine (INSTALL, safety-net playbook): PR commons-lang#2,
   `@Disabled` + `docs/ai/quarantine.md` (CL-Q1). JDK or tzdata root cause: not investigated.
+- Owner merged #2 (`45c5c21`); baseline run 42387375318 passed (artifact `coverage-baseline`). Owner added the master
+  ruleset; read: deletion, non_fast_forward, pull_request (code-owner review), required checks `tests`, `gate`.
+- `/bootstrap` (ctags, file tracker; Issues off, Jira not configured): PR commons-lang#3, CI tests and gate pass.
+
+## commons-lang slices
+| Ticket | Type | Plan PR | ready (CI) | Code PR | done | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| CL-1 CharUtils.isAsciiWhitespace | story | commons-lang#4 | pending | - | local pass: changed-line coverage 100%, red_check exit_base 1 (compile error on base) | RED is a test compile error: red_check counts it as fail-on-base |
+
 
 ## Findings
 ```
