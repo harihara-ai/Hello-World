@@ -148,4 +148,5 @@ Tokens and minutes per slice: not measured. Escapes after merge: none known yet 
 - koa#9 and commons-lang#10: 4 files each (`gate_check.py`, `kitconst.py`, `bug.md`, `INSTALL.md`). Local gate
   with 1.0.4 (master's kit, as CI runs it) and with 1.0.5: pass, "only docs or human-owned files changed". CI: tests
   and gate pass on both. No `.feature` file changed, so P01's case was not exercised (1.0.4 passes this upgrade too).
-- `/refresh` after the merge: not run yet.
+- Owner merged koa#9 and commons-lang#10. `/refresh` (hand-run): koa#10 (5 entries re-verified), commons-lang#11 (3);
+  no metrics.csv committed, so no threshold suggestion.
