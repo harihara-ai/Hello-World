@@ -143,3 +143,9 @@ Tokens and minutes per slice: not measured. Escapes after merge: none known yet 
 - PINNED (owner "yes"): changed=6 (3 HIGH-RISK). After the pin: tangle 70; lint 49 clean; selftest lock match,
   forge 30, unit 171, contract 5, mutation 14 OK; run_traps 22/22, false alarms 0. Package 1.0.5 (`package.md`).
   Friction: lint and selftest refuse while `__pycache__/` from a run_traps run sits in `workspace/` (removed by hand).
+
+## Upgrade to 1.0.5 (INSTALL Upgrade: delete `kit/`, unzip)
+- koa#9 and commons-lang#10: 4 files each (`gate_check.py`, `kitconst.py`, `bug.md`, `INSTALL.md`). Local gate
+  with 1.0.4 (master's kit, as CI runs it) and with 1.0.5: pass, "only docs or human-owned files changed". CI: tests
+  and gate pass on both. No `.feature` file changed, so P01's case was not exercised (1.0.4 passes this upgrade too).
+- `/refresh` after the merge: not run yet.
