@@ -68,3 +68,27 @@ confidence: high for the observed mergeable state; why GitHub skipped the review
 - `pull_request_target` variant (fix b), its token and cache exposure: not run.
 - Merge of the clean code PR #3 and the next baseline from it; `/bootstrap` (agent-driven): not run.
 - Block force pushes on trial-main (not set in the ruleset); self-hosted runners; other stacks: not run.
+
+## N01 fix (b), owner chose "both" (a and b): RED then GREEN
+RED: #11 (w1) above. Change on the trial (each workflow PR approved and merged by the owner, high-risk):
+| PR | Change | Result |
+| --- | --- | --- |
+| #12 | add `northstar-ci.yml` on trial-main: same jobs on `pull_request_target`, `permissions: {}`, jobs read-only, no secrets, no cache, PR head without credentials (`allow-unsafe-pr-checkout: true`) | its checks came from the old `northstar.yml`: success; merged |
+| #13 | delete `northstar.yml` | **no run at all**: 0 check runs 8 min after opening, mergeable_state blocked |
+| #14 (to master) | the same `northstar-ci.yml` on master, the default branch | merged |
+| #13 again | new commit (comment in trial-main's copy) | run 42375410343 (from master's copy): tests, gate success; merged (`e582863`) |
+#13 shows GitHub took the `pull_request_target` workflow from the default branch (master), not from trial-main (an
+observation; GitHub's docs not read here). INSTALL now says "a protected branch" and names the default branch.
+| PR | Case | tests | gate | gate rules (fail) | Mergeable |
+| --- | --- | --- | --- | --- | --- |
+| #3 (rebased) | clean code CART-3 | success | success | - | clean |
+| #15 | w1b: the PR replaces the gate job in trial-main's `northstar-ci.yml`, adds `src/extra.py` | success | failure (master's copy ran) | `diff_scope:protected_path`, `outside_scan` (workflow file, src/extra.py) | blocked |
+| #16 | w2: the PR adds `fake.yml` (`pull_request`) with echo jobs `tests` and `gate`, adds `src/extra.py` | success, and fake success | failure, and fake success | `diff_scope:protected_path`, `outside_scan` (fake.yml, src/extra.py) | blocked |
+Runs: #3 42376096023, #15 42376104939, #16 42376111724 (fake 42376111520). Two `gate` checks on one commit, one
+failed: GitHub blocked the merge. Fix (a) (the AI opens PRs from its own account) needs a second GitHub account:
+not set up, not run.
+Not run: a PR to master editing master's `northstar-ci.yml` (master has no ruleset: any push changes the CI);
+a ruleset on master; fix (a); pull_request_target cache or token abuse by PR tests.
+Kit source: `proposal/modules/01-core.md` (core.install), INSTALL 61 to 66 lines (cap 300). Scratch pin: `PINNED 70 files.
+added=0 changed=1 removed=0`, `kit/INSTALL.md HIGH-RISK`, lock `cbd77c98...` to `bbbe4d24...`; lint 49 clean; forge tests OK.
+No script changed (no new test: prose only; RED/GREEN are the hosted runs above). Not pinned: awaiting the owner.
