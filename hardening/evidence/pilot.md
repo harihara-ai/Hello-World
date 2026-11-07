@@ -28,7 +28,13 @@ Repos (owner choice): legacy `harihara-ai/commons-lang` (Java, Maven, JaCoCo, PI
   `src/main/java/org/apache/commons/lang3/CharUtils.java` to the JaCoCo path.
 - Maven takes class names, so `{tests}` goes through `.github/northstar/mvn-tests.sh` (tracked, run from
   `../approved`): exit 0 on CharUtilsTest + BitFieldTest (4 s), 1 with `CharUtils.isAscii` broken, 5 with no files.
-- Install PR commons-lang#1. GitHub lists 0 workflows on the fork (Actions likely off): owner enables.
+- Install PR commons-lang#1. Workflows appeared once the PR opened (no enable step). Merge was blocked by a classic
+  branch protection rule (1 approving review), hidden in the phone layout; owner deleted it (desktop site) and merged
+  (`0fa5938`). Apache's own Java CI and Dependency Review failed on #1 (not required; not read further).
+- First baseline (run 42386280045) FAILED: 9 of 89127, all `FastDatePrinterTimeZonesTest.testCalendarTimezoneRespected`
+  (SimpleDateFormat MDT/CDT/PDT vs FastDateFormat MST/CST/PST, US zones, 2026-11-07, runner Temurin 21). Same suite
+  passed locally (OpenJDK 21.0.12). Owner chose quarantine (INSTALL, safety-net playbook): PR commons-lang#2,
+  `@Disabled` + `docs/ai/quarantine.md` (CL-Q1). JDK or tzdata root cause: not investigated.
 
 ## Findings
 ```
@@ -79,6 +85,17 @@ evidence: KOA-2: impact scan listed length.test.js; the fix broke respond.test.j
 problem: a symbol scan finds callers, not tests that pin the current behaviour; a bug plan can miss a test it must edit
 proposed_fix: /slice for a bug: run the fix spike's full test suite before the plan PR, or grep tests for the
   wrong value; record any test that pins the bug in the spec
+```
+
+```
+id: P05
+severity: minor
+location: kit/INSTALL.md (first baseline, quarantine); northstar-ci recipe
+evidence: commons-lang: baseline failed on a machine-dependent test; with no baseline every gate run fails at the
+  baseline download step, so the quarantine PR itself cannot pass the gate
+problem: INSTALL says quarantine first but not how that PR gets merged before a baseline exists
+proposed_fix: INSTALL: run the full suite on the CI runner in the install PR (tests job), quarantine in the same
+  install PR; or say the quarantine PR is merged before the ruleset is added
 ```
 
 ## Not run
