@@ -17,6 +17,7 @@ A seed that grows into the North Star kit by its own rules. Source of truth: `pr
 9. **Say what is unverified.** Report only what you ran. Mark anything else "not run".
 10. **Prevent, then correct.** Every finding, escape, false alarm or rescue gets the RCA SOP (`hardening/RCA.md`):
     fix the case, N-whys to the systemic root (`hardening/roots.md`), and work the highest-leverage prevention first.
+    Smallest prevention wins: reuse before adding; no new gate, flag or process without a repeated root.
 
 ## Commands
 `/forge <stage>` drives the stages. Stages: check, tangle, lint, selftest, harden, certify, package.

@@ -29,8 +29,9 @@ Do DIRECTION.md section 9 in order, stopping at each human gate:
 1. Move: push this branch's history to harihara-ai/northstar-kit as main. Add CI that runs forge lint,
    forge selftest and hardening/testbed/run_traps.py on every PR (Python only, no secrets). Ask me to add a ruleset
    (PR, the CI check, code-owner review, no force push). Stop when CI is green on a PR.
-2. R1 golden-path suite, tests first. Show P01, P03, P05 RED on kit 1.0.4 and GREEN on 1.0.5. Stop for the pin.
-Rules: RCA SOP for every finding; prevention before corrections; no new gate unless a root needs it; report only
+2. R1: add good-path cases to the existing test bed (no new framework), tests first. Show P01 and P03 RED on
+   kit 1.0.4 and GREEN on 1.0.5. Stop for the pin.
+Rules: RCA SOP for every finding, smallest prevention wins, no governance machinery; report only
 what you ran, mark the rest "not run".
 ```
 

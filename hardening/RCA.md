@@ -32,6 +32,10 @@ the flow (a hidden setting, a blocked merge, a manual fix). One RCA per finding;
 8. **Record** in the finding: `root: R<n>`, `corrective:`, `preventive:`, `verified_by:`. Keep `roots.md` current.
 
 ## Guardrails
+- **No governance machinery.** Pick the smallest prevention that stops the class: reuse an existing test, list or
+  script before adding one; a new gate, flag, file or process needs a root with two or more findings and a sentence
+  saying why nothing smaller works. Delete a prevention that has caught nothing after two kit releases.
+- One prevention in flight per root. Corrections for minor findings can wait for the root's prevention.
 - Time box: 15 minutes of whys per finding; more only for a blocker or an escape.
 - Prevention never weakens a gate or skips a test. If prevention needs a kit change, it goes through tests first and a
   human pin like any other change.

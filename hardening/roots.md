@@ -10,9 +10,10 @@ Whys (P03): gate refused `metrics.csv` -> the change-folder allow-list lacks it 
 written in separate modules -> no test runs a command's outputs through the gates -> the kit's tests are unit tests
 per component plus attack traps; nothing runs the good path of a playbook -> certification measured blocking bad
 changes, not completing good ones (saturated: missing feedback loop).
-Prevention (detect at the earliest stage): a **golden-path suite**: scripted runs of install, bootstrap, story, bug,
-refactor, quarantine and upgrade on fixture repos (Python, JS, Java), through `gate_check` the way CI calls it, in
-the kit repo's CI on every PR; plus a contract test that every file a command says it writes is allowed by the gates.
+Prevention (detect at the earliest stage), smallest form: add **good-path cases** to the existing test bed
+(`hardening/testbed`, run by `run_traps.py`), each a git fixture that must PASS: upgrade PR, plan PR, code PR with
+`metrics.csv`, quarantine PR. No new framework; one Python stack first (JS and Java only if a finding needs them).
+Plus one contract test: every file a command says it writes is allowed by the gates.
 Score: (6 + 3 likely) x 2.3 (two blockers, four minors) / M 2 = 10.5.
 Verify (planned, not run): the suite shows P01, P03 and P05 RED on kit 1.0.4 and GREEN on 1.0.5. Status: open.
 

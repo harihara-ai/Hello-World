@@ -102,8 +102,8 @@ steps are not verified; R4 sizing and scope are unmeasured judgement (P04, F17).
 
 ## 9. Home and next sessions
 Owner decision (2026-11-07): the kit moves to a new private repo **harihara-ai/northstar-kit** (owner creates it
-empty). Its CI runs forge lint, selftest, traps and the golden-path suite on every PR, under a ruleset.
+empty). Its CI runs forge lint, selftest and run_traps (traps plus good-path cases) on every PR, under a ruleset.
 1. **Move and guard:** push this branch's history to northstar-kit `main`; CI for lint, selftest, run_traps; ruleset.
-2. **R1 golden-path suite** (tests first): install, bootstrap, story, bug, refactor, quarantine and upgrade on
-   fixture repos, through `gate_check` as CI calls it; P01, P03, P05 RED on 1.0.4, GREEN on 1.0.5.
+2. **R1 good-path cases** in the existing test bed (tests first, no new framework): upgrade, plan, code PR with
+   `metrics.csv`, quarantine; P01, P03 RED on kit 1.0.4, GREEN on 1.0.5 (P05 is prose: one case at most).
 3. **R4 slicer script** (section 2), then **S2** on koa with tokens and minutes recorded.
