@@ -55,7 +55,7 @@ proposed_fix: one of: allow metrics.csv in the change folder, or have /implement
 ## koa slices
 | Ticket | Type | Plan PR | ready (CI) | Code PR | done | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| KOA-1 response.json / ctx.json | story | koa#3 | pass | - | local pass (6 gates) | first ready run: granularity split (5 scenarios, 2 modules); split by requirement; 1 attempt per slice |
+| KOA-1 response.json / ctx.json | story | koa#3 (merged `8024d94`) | pass | koa#4 | CI pass: stage done, 6 gates, changed-line coverage 100%, red_check exit_base 1 (job 128436292711) | first ready run: granularity split (5 scenarios, 2 modules); split by requirement; 1 attempt per slice |
 
 Metrics (KOA-1): S1 est 35, actual 48 lines, 2 files, 1 attempt; S2 est 20, actual 24, 2 files, 1 attempt.
 
