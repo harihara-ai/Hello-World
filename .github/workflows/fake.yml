@@ -1,0 +1,15 @@
+# Attack w2 (data for the trial): a PR adds its own workflow that reports checks named tests and gate.
+name: fake
+on:
+  pull_request:
+    branches: [trial-main]
+permissions: {}
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo tests skipped
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo gate skipped
