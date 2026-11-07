@@ -43,7 +43,8 @@ Repos (owner choice): legacy `harihara-ai/commons-lang` (Java, Maven, JaCoCo, PI
 | Ticket | Type | Plan PR | ready (CI) | Code PR | done | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | CL-1 CharUtils.isAsciiWhitespace | story | commons-lang#4 (merged `4c85e8e`) | pass | commons-lang#5 | CI pass (job 128454292181): changed-line coverage 100%, red_check exit_base 1 (compile error on base), Maven helper ran | RED is a test compile error: red_check counts it as fail-on-base |
-| CL-2 BitField.getValue(long) bit 63 | bug (hunt, unreleased 3.21.0 API) | commons-lang#6 | pending | - | local pass: coverage 100%, exit_base 1 | P04 applied: fix spike ran the BitField tests before the plan; none pinned the bug |
+| CL-2 BitField.getValue(long) bit 63 | bug (hunt, unreleased 3.21.0 API) | commons-lang#6 (merged `fef2412`) | pass | commons-lang#7 | CI pass (job 128456923773) | P04 applied: fix spike ran the BitField tests before the plan; none pinned the bug |
+| CL-3 CharUtils char overloads delegate | refactor | commons-lang#8 | pass | - | local pass (coverage 100%; red_check n/a) | S0 CHAR tests pin all 65536 chars; duplicated bodies 2 to 0 |
 
 
 ## Findings
@@ -83,6 +84,7 @@ proposed_fix: one of: allow metrics.csv in the change folder, or have /implement
 | KOA-2 HEAD Content-Length 2 for web stream bodies | bug (found in the hunt) | koa#5 (merged `d4a3968`) | CI pass | koa#6 | CI pass: done, 6 gates, changed-line coverage 100%, red_check exit_base 1 (job 128438025988) | first code run broke `respond.test.js`, which asserted the buggy length; owner widened plan #5 (unmerged) to that assertion |
 | KOA-3 refactor lib/only.js | refactor | koa#7 (merged `3553675`) | CI pass | koa#8 | CI pass (job 128439471377); red_check n/a for refactor | S0 CHAR tests passed on old code; first draft pinned a wrong getter assumption (read once; really twice), dropped and spec corrected before merge; only.js 9 to 3 lines, branches 5 to 4 |
 
+Owner review (commons-lang): #5 plus #6 took 3 min (owner).
 Owner review: koa#4 plus koa#2 took 5 min, koa#6 4 min, koa#8 2 min (owner). koa#6 took 4 min (owner).
 Metrics (KOA-1): S1 est 35, actual 48 lines, 2 files, 1 attempt; S2 est 20, actual 24, 2 files, 1 attempt.
 
