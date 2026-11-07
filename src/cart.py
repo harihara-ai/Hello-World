@@ -2,7 +2,7 @@
 
 
 def subtotal(items):
-    return round(sum(i["price"] * i["qty"] for i in items), 2)
+    return round(sum(i["price"] + i["qty"] for i in items), 2)
 
 
 def bulk_discount(items):
