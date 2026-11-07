@@ -50,27 +50,34 @@ stage_package() {
   stage_verify
   mkdir -p dist
   [ -f hardening/evidence/EVIDENCE.md ] || echo "WARN: no evidence pack; package is UNCERTIFIED"
-  out="dist/northstar-kit.zip"
-  rm -f "$out"
+  rm -f dist/northstar-kit.zip dist/northstar-kit-install.zip
   python3 -I - <<'PY'
 import os, zipfile
+def add(z, base, strip=""):
+    if os.path.isfile(base):
+        z.write(base, base[len(strip):])
+    for root, dirs, files in os.walk(base):
+        dirs[:] = [d for d in dirs if d != "__pycache__"]
+        for f in files:
+            p = os.path.join(root, f)
+            z.write(p, p[len(strip):])
 out = "dist/northstar-kit.zip"
 with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
     for base in ("workspace", "forge", "hardening/evidence", "hardening/findings.md", "hardening/testbed",
                  "hardening/roles", "hardening/findings.schema.md", "hardening/runners"):
-        if os.path.isfile(base):
-            z.write(base)
-        elif os.path.isdir(base):
-            for root, dirs, files in os.walk(base):
-                dirs[:] = [d for d in dirs if d != "__pycache__"]
-                for f in files:
-                    p = os.path.join(root, f)
-                    z.write(p)
+        add(z, base)
     for f in ("kit.lock",):
         z.write(f)
     for f in ("README.md", "CHANGELOG.md"):
         z.write(os.path.join("package", f), f)
 print("built", out)
+# Install zip (G24): repo-root paths, unzip into the target repo. Never a root CLAUDE.md.
+inst = "dist/northstar-kit-install.zip"
+with zipfile.ZipFile(inst, "w", zipfile.ZIP_DEFLATED) as z:
+    add(z, "workspace/kit", "workspace/")
+    add(z, "workspace/kit.manifest.yml", "workspace/")
+    add(z, "workspace/kit/.claude/commands", "workspace/kit/")
+print("built", inst)
 PY
 }
 
