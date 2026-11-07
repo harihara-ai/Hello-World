@@ -7,7 +7,7 @@ round_cap: 6
 trap_score: 21/21 cases (critical 16/16, other 5/5, false alarms 0) on pinned workspace
 trap_target: all critical, 95 percent others
 new_findings_threshold: 2 per round
-open_blockers: 1 (M01: CI recipe bypass via planted git hook/config; found by the after-cap check). L01, L03, L04 checked and hold; L02 holds in part
+open_blockers: 0. After-cap check: L01, L03, L04 hold; L02 bypass M01 fixed (two CI jobs) and pinned; not run on a hosted CI
 open_majors: deferred G19 (symbol-level scope), G20 (no-coverage stacks), F17; G18 in part
 consecutive_clean_rounds: 0 (round 6 had 3 blockers; cap reached)
 doc_revision_synced: synced 2026-11-07 (sections 3, 8, 10.2, 10.4, 10.6, 11.2, 11.3, 22.4)

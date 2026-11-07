@@ -73,7 +73,8 @@ Score line, identical in all 5 runs: `22/22 cases; critical 17/17; other 5/5; fa
    the right thing, that edited tests were not weakened, or that coverage settings in general build files were not
    loosened. Controls: AI test review, human PR review, mutation testing where configured (`kit/core/rules.md` rule 10).
 2. **Fixes after the cap (L01-L04):** a short R2/R5 check ran after sign-off (`after-cap-check.md`). L01, L03, L04 hold;
-   L02 is bypassed by a test step that plants a git hook or config (M01, blocker, open). Not a full round.
+   L02 was bypassed by a test step that plants a git hook or config (M01); fixed with two CI jobs and pinned after
+   this pack was signed. Not a full round; not run on a hosted CI.
 3. **Synthetic only:** two small synthetic repos; PHP runs through a Python stand-in runner; coverage reports are fixtures;
    tracker and language-server probes (cases 09, 10) use simulated results; the CI recipe was run by hand on local bare
    origins, never on a hosted CI with branch protection.

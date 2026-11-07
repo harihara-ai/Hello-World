@@ -21,14 +21,22 @@ Put every pattern in `PROTECTED` in `kit/scripts/kitconst.py` into `CODEOWNERS`.
    fails if the PR changes it.
 
 ## CI is the gate that counts
-Local runs are early feedback: the agent controls its own working copy. The required CI job runs the approved
-kit from the target branch, in its own worktree, against the PR checkout. The PR's tests run first; the approved
-worktree is created only after them, so PR code never runs while it exists:
+Local runs are early feedback: the agent controls its own working copy. CI has two jobs, so PR code never runs
+before the gates (a test can plant a git hook or git config that rewrites the kit on the same runner):
+1. **tests**: run the PR's tests with coverage; the step must pass. Keep the report as an artifact.
+2. **gate**, after tests, on a fresh runner (hosted runners are; a self-hosted one must be ephemeral). It runs the
+   approved kit from the target branch in its own worktree and no PR code before `gate_check.py`: install test tools
+   as `../approved` declares them, never from files the PR changed. Only `red_check`, the last gate, runs PR tests.
 ```
-set -e                                        # a failing test step stops the job
-git fetch origin <target> && BASE=$(git merge-base HEAD origin/<target>)
+# tests job
+set -e
 COVERAGE_FILE=../out/.coverage <run the tests with coverage, writing the report to ../out/coverage.xml>
+<keep ../out/coverage.xml as this run's artifact>
+# gate job
+set -e
+git fetch origin <target> && BASE=$(git merge-base HEAD origin/<target>)
 git worktree add ../approved origin/<target>
+<install the test tools from ../approved; fetch the tests job's report to ../out/coverage.xml>
 python3 -I ../approved/kit/scripts/gate_check.py auto --repo . --change auto --base $BASE \
   --coverage-report ../out/coverage.xml --baseline-report <the target's last coverage report> --test-cmd "<test command>"
 ```
@@ -40,7 +48,7 @@ When the install PR merges, run the tests with coverage on the target once and k
 (a flaky test there is quarantined first: `kit/playbooks/safety-net.md`).
 `{tests}` examples: pytest `pytest {tests}`; PHPUnit `vendor/bin/phpunit {tests}`. Maven and dotnet take class names, so
 use the whole suite there.
-Make the job a required check.
+Make both jobs required checks.
 
 Hotfix at night: an admin merges with the check overridden; within 5 working days a retro plan PR adds the spec and an
 `evidence.md` naming the merged commit (`kit/playbooks/bug.md`).

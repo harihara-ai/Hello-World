@@ -84,3 +84,7 @@ Scratch tangle: `PINNED 70 files. added=0 changed=1 removed=0`, `changed: kit/IN
 differs from `workspace/`. Not pinned: awaiting the human. Not run: a hosted CI (GitHub/GitLab) with two real jobs and
 artifacts; a self-hosted runner; installing test tools "as ../approved declares them" (the harness uses the runner's
 tools); the gate job's red_check run is the only PR code there and runs after every other gate (by reading gate_check).
+
+PINNED (human-approved "Proceed"): changed=1 (kit/INSTALL.md, high-risk), kit.lock sha256 48e40f7f... After the pin:
+tangle 70 files; lint 49 clean; selftest lock match, forge 25, unit 169, contract 5, mutation 14 OK; run_traps (1 run)
+22/22, false alarms 0; the 9 cases on the pinned kit with the two-job recipe give the GREEN column above.
