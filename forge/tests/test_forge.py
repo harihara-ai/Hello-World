@@ -144,7 +144,7 @@ class TangleTests(unittest.TestCase):
 
     def test_agent_steering_files_are_high_risk(self):
         for path in ("kit/.claude/commands/genie.md", "kit/CLAUDE.md", "kit/sub/CLAUDE.md",
-                     "kit/gates/coverage.py", "kit/scripts/gate_check.py", "kit/core/policy.yml"):
+                     "kit/gates/coverage.py", "kit/scripts/gate_check.py", "kit/core/policy.yml", "kit/INSTALL.md"):
             self.write(block(path, "x"))
             rc, out = self.pin()
             self.assertEqual(rc, 1, path)

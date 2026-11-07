@@ -59,7 +59,8 @@ def prepare(repo, case_dir, case, kit):
     git(tmp, "commit", "-qm", "base")
     with open(os.path.join(os.path.dirname(tmp), "base"), "w") as fh:
         fh.write(git(tmp, "rev-parse", "HEAD"))
-    shutil.copytree(aside, tmp, dirs_exist_ok=True)
+    if case.get("stage") != "ready":  # a plan PR holds no code: leave the change files out
+        shutil.copytree(aside, tmp, dirs_exist_ok=True)
     overlay = os.path.join(case_dir, "overlay")
     if os.path.isdir(overlay):
         shutil.copytree(overlay, tmp, dirs_exist_ok=True)
@@ -76,13 +77,13 @@ def prepare(repo, case_dir, case, kit):
 
 
 def run_gate_check(tmp, case, kit):
-    stages = ["ready", "done"] if case["stage"] == "both" else [case["stage"]]
+    stages = [case["stage"]]
     with open(os.path.join(os.path.dirname(tmp), "base")) as fh:
         base = fh.read().strip()
     with open(os.path.join(tmp, "testbed.json"), encoding="utf-8") as fh:
         tb = json.load(fh)
     ci = ["--base", base, "--coverage-report", os.path.join(tmp, tb["coverage_report"]),
-          "--baseline-total", str(tb["baseline_total"]), "--test-cmd", tb["test_cmd"]]
+          "--baseline-report", os.path.join(tmp, tb["baseline_report"]), "--test-cmd", tb["test_cmd"]]
     failed, found = [], {}
     for stage in stages:
         p = subprocess.run(PY + [os.path.join(kit, "kit/scripts/gate_check.py"), stage, "--repo", tmp,

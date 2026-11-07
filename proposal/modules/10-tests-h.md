@@ -4,6 +4,193 @@ purpose: working source for the kit's own tests (T1 unit, T2 contract, T3 mutati
 
 Not kit components, so not in the manifest. `tests/run.sh` runs all three levels.
 
+## tests/unit/test_red_check.py
+
+````python file=tests/unit/test_red_check.py
+"""purpose: T1 fixtures for gate red_check (changed tests must fail on base code; spec 10.4 #1; H05, J03, J08, C01, C02)."""
+import os
+import sys
+import unittest
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from helpers import *  # noqa: E402,F403
+
+TEST = ("import os, sys, unittest\nsys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src'))\n"
+        "import m\n\n\nclass T(unittest.TestCase):\n    def test_f(self):\n        self.assertEqual(m.f(), %s)\n")
+
+
+class RedCheck(unittest.TestCase):
+    def setUp(self):
+        self.d = git_init(write_tree({"src/m.py": "def f():\n    return 1\n", "tests/test_m.py": TEST % 1}))
+        self.base = git(self.d, "rev-parse", "HEAD").strip()
+
+    def red(self, wtype="story", cmd=None):
+        return run_gate("red_check", {"base": self.base, "type": wtype, "test_cmd": cmd or TEST_CMD}, cwd=self.d)
+
+    def change(self):
+        write(self.d, "src/m.py", "def f():\n    return 2\n")
+        write(self.d, "tests/test_m.py", TEST % 2)
+
+    def test_behaviour_change_with_new_test_is_red(self):
+        self.change()
+        rc, out, log = self.red()
+        self.assertEqual(rc, 0, log)
+
+    def test_working_tree_is_restored(self):
+        self.change()
+        write(self.d, "src/new.py", "x = 1\n")
+        self.red()
+        with open(os.path.join(self.d, "src/m.py")) as fh:
+            self.assertIn("return 2", fh.read())
+        self.assertTrue(os.path.exists(os.path.join(self.d, "src/new.py")))
+
+    def test_test_that_passes_on_base_fails(self):
+        write(self.d, "src/m.py", "def f():\n    return 2\n")
+        write(self.d, "tests/test_n.py", "import unittest\n\n\nclass T(unittest.TestCase):\n    def test_x(self):\n        pass\n")
+        rc, out, _ = self.red()
+        self.assertEqual(rc, 1)
+        self.assertIn("tests_pass_on_base", rules(out))
+
+    def test_story_without_changed_tests_fails(self):
+        write(self.d, "src/m.py", "def f():\n    return 2\n")
+        rc, out, _ = self.red()
+        self.assertIn("no_new_tests", rules(out))
+
+    def test_runner_that_cannot_start_is_an_error_not_red(self):
+        self.change()
+        rc, out, _ = self.red(cmd="no-such-test-runner-xyz")
+        self.assertEqual(rc, 1)
+        self.assertIn("runner_error", rules(out))
+
+    def test_tests_placeholder_runs_only_changed_tests(self):
+        write(self.d, "tests/test_broken.py", "import unittest\n\n\nclass B(unittest.TestCase):\n    def test_b(self):\n        self.fail()\n")
+        git(self.d, "add", "-A"); git(self.d, "commit", "-qm", "broken unrelated test on base")
+        self.base = git(self.d, "rev-parse", "HEAD").strip()
+        write(self.d, "tests/test_n.py", "import unittest\n\n\nclass T(unittest.TestCase):\n    def test_x(self):\n        pass\n")
+        rc, out, _ = self.red(cmd=sys.executable + " -B -m unittest {tests}")  # no -I: unittest imports by path from cwd
+        self.assertIn("tests_pass_on_base", rules(out))
+
+    def test_refactor_and_spike_have_nothing_to_check(self):
+        self.change()
+        self.assertEqual(self.red("refactor")[0], 0)
+        self.assertEqual(self.red("spike")[0], 0)
+
+    def test_missing_test_command_fails(self):
+        self.change()
+        rc, out, _ = run_gate("red_check", {"base": self.base, "type": "story"}, cwd=self.d)
+        self.assertIn("no_test_cmd", rules(out))
+
+
+if __name__ == "__main__":
+    unittest.main()
+````
+
+## tests/unit/test_spec_lint.py
+
+````python file=tests/unit/test_spec_lint.py
+"""purpose: T1 fixtures for gate spec_lint (G1 spec checks, trap 2)."""
+import os
+import sys
+import unittest
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from helpers import *  # noqa: E402,F403
+
+
+def lint(text, **policy):
+    d = tempfile.mkdtemp()
+    p = write(d, "spec.md", text)
+    return run_gate("spec_lint", {"spec": p, "policy": policy})
+
+
+class SpecLint(unittest.TestCase):
+    def test_clean_spec_passes(self):
+        rc, out, log = lint(CLEAN_SPEC)
+        self.assertEqual(rc, 0, log)
+        self.assertTrue(out["pass"])
+        self.assertEqual(out["gate"], "spec_lint")
+
+    def test_vague_words_fail(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("Coupons.", "Coupons.").replace(
+            "Orders of 100.00 or more get a 10 percent discount.", "The checkout must be fast and user-friendly."))
+        self.assertEqual(rc, 1)
+        self.assertIn("vague_word", rules(out))
+
+    def test_vague_word_with_measure_allowed(self):
+        rc, _, log = lint(CLEAN_SPEC.replace("get a 10 percent discount.", "get a 10 percent discount, priced fast (under 50 ms)."))
+        self.assertEqual(rc, 0, log)
+
+    def test_unrelated_number_does_not_excuse_vague_word(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("get a 10 percent discount.", "get a 10 percent discount and the screen is fast."))
+        self.assertIn("vague_word", rules(out))
+
+    def test_vague_words_outside_scored_sections_and_in_backticks_ignored(self):
+        text = CLEAN_SPEC.replace("Loyal customers pay full price.", "The quick fix in `SecureRandom` is slow.")
+        text = text.replace("Coupons.", "A simple redesign.")
+        rc, _, log = lint(text)
+        self.assertEqual(rc, 0, log)
+
+    def test_requirement_without_id_fails(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("### REQ-DISC-002: No", "### No"))
+        self.assertEqual(rc, 1)
+        self.assertIn("req_id", rules(out))
+
+    def test_missing_error_case_fails(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("Errors: none\n", ""))
+        self.assertIn("error_case", rules(out))
+        self.assertEqual(rc, 1)
+
+    def test_scenario_needs_given_when_then_and_level(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("  Then the price is 99.99\n  Level: unit\n", ""))
+        self.assertEqual(rc, 1)
+        self.assertTrue({"gwt", "test_level"} <= rules(out))
+
+    def test_open_questions_fail(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("## Open questions\nnone", "## Open questions\nWhich currency?"))
+        self.assertIn("open_questions", rules(out))
+
+    def test_missing_ticket_and_section_fail(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("Ticket: SHOP-12\n", "").replace("## Out of scope\n", "## Notes\n"))
+        self.assertTrue({"ticket", "section"} <= rules(out))
+
+    def test_nfr_needs_measure(self):
+        for nfr in ("Pricing is quick.", "The fee page must be secure and robust for v2."):
+            rc, out, _ = lint(CLEAN_SPEC.replace("## Non-functional\nnone", "## Non-functional\n" + nfr))
+            self.assertIn("nfr_threshold", rules(out), nfr)
+        rc, _, log = lint(CLEAN_SPEC.replace("## Non-functional\nnone", "## Non-functional\nPricing p95 under 200 ms; WCAG 2.1 AA."))
+        self.assertEqual(rc, 0, log)
+
+    def test_scenario_outline_and_error_by_then(self):
+        text = CLEAN_SPEC.replace("Scenario: error - negative total rejected", "Scenario Outline: negative totals")
+        rc, _, log = lint(text)
+        self.assertEqual(rc, 0, log)
+
+    def test_chore_needs_no_requirements(self):
+        chore = "# Change: tidy\nTicket: OPS-1\nType: chore\n\n## Problem\nOld logging.\n\n## Outcome\nOne logger.\n\n## Non-functional\nnone\n\n## Out of scope\nBehaviour.\n\n## Open questions\nnone\n"
+        rc, _, log = lint(chore)
+        self.assertEqual(rc, 0, log)
+
+    def test_too_long_fails(self):
+        rc, out, _ = lint(CLEAN_SPEC, max_spec_lines=10)
+        self.assertIn("size", rules(out))
+
+    def test_duplicate_id_fails(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("REQ-DISC-002", "REQ-DISC-001"))
+        self.assertIn("duplicate_id", rules(out))
+
+    def test_missing_file_is_usage_error(self):
+        rc, _, _ = run_gate("spec_lint", {"spec": "/nonexistent/spec.md"})
+        self.assertEqual(rc, 2)
+
+
+    def test_none_with_punctuation_or_bullet(self):
+        text = CLEAN_SPEC.replace("Errors: none", "- Errors: None.").replace("## Open questions\nnone", "## Open questions\n- None")
+        rc, _, log = lint(text)
+        self.assertEqual(rc, 0, log)
+
+
+if __name__ == "__main__":
+    unittest.main()
+````
+
 ## tests/unit/test_state.py
 
 ````python file=tests/unit/test_state.py
@@ -49,7 +236,7 @@ class State(unittest.TestCase):
         self.assertTrue(self.state(self.d)[1]["bootstrapped"])
 
     def test_change_with_status_and_gate(self):
-        git(self.d, "checkout", "-q", "-b", "feature/SHOP-12-add-discount")
+        git(self.d, "checkout", "-q", "-b", "feature/SHOP-12-add-discount-code")
         ch = "openspec/changes/SHOP-12-add-discount/"
         write(self.d, ch + "status.md", 'slice: S1\nnext: run /gate done "now"\n')
         write(self.d, ch + "gates-ready.json", {"stage": "ready", "pass": True})
@@ -63,99 +250,6 @@ class State(unittest.TestCase):
     def test_not_a_repo(self):
         rc, s = self.state(tempfile.mkdtemp())
         self.assertIsNone(s["branch"])
-
-
-if __name__ == "__main__":
-    unittest.main()
-````
-
-## tests/unit/test_trace_check.py
-
-````python file=tests/unit/test_trace_check.py
-"""purpose: T1 fixtures for gate trace_check (requirement to test, trap 6; F01, F02)."""
-import os
-import sys
-import unittest
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from helpers import *  # noqa: E402,F403
-
-
-
-class Trace(unittest.TestCase):
-    def setUp(self):
-        self.root, self.ch = make_repo()
-
-    def check(self, **extra):
-        payload = {"spec_dirs": [self.ch]}
-        payload.update(extra)
-        return run_gate("trace_check", payload, cwd=self.root)
-
-    def test_every_requirement_tested_passes(self):
-        rc, out, log = self.check()
-        self.assertEqual(rc, 0, log)
-
-    def test_requirement_without_test_fails(self):
-        write(self.root, "tests/test_discount.py", "# REQ-DISC-001\n")
-        rc, out, _ = self.check()
-        self.assertEqual(rc, 1)
-        self.assertIn("REQ-DISC-002", str(out["findings"]))
-
-    def test_id_in_production_code_does_not_count(self):
-        write(self.root, "tests/test_discount.py", "# REQ-DISC-001\n")
-        write(self.root, "src/discount.py", "# REQ-DISC-002\n")
-        self.assertEqual(self.check()[0], 1)
-
-    def test_test_dirs_input_is_ignored(self):
-        write(self.root, "tests/test_discount.py", "# REQ-DISC-001\n")
-        self.assertEqual(self.check(test_dirs=["src", "openspec"])[0], 1)
-
-    def test_underscore_ids_in_java_and_csharp_names(self):
-        os.remove(os.path.join(self.root, "tests/test_discount.py"))
-        write(self.root, "src/test/java/shop/DiscountTest.java", "void REQ_DISC_001_tenPercent() {}\n")
-        write(self.root, "Shop.Tests/DiscountTests.cs", "public void Req_Disc_002_NoDiscount() {}\n")
-        rc, _, log = self.check()
-        self.assertEqual(rc, 0, log)
-
-    def test_feature_tags_count(self):
-        os.remove(os.path.join(self.root, "tests/test_discount.py"))
-        write(self.root, "features/discount.feature", "@REQ-DISC-001 @REQ-DISC-002\nFeature: x\n")
-        self.assertEqual(self.check()[0], 0)
-
-    def test_no_ids_in_spec_fails(self):
-        write(self.root, self.ch + "/spec.md", "nothing here\n")
-        self.assertEqual(self.check()[0], 1)
-
-    def test_no_test_files_fails(self):
-        os.remove(os.path.join(self.root, "tests/test_discount.py"))
-        self.assertEqual(self.check()[0], 1)
-
-    def test_orphan_test_id_warns_only(self):
-        write(self.root, "tests/test_x.py", "# REQ-OTHER-009\n")
-        rc, out, _ = self.check()
-        self.assertEqual(rc, 0)
-        self.assertIn("orphan_id", rules(out))
-
-
-    def test_ids_in_ticket_are_not_requirements(self):
-        write(self.root, self.ch + "/ticket.md", "Related to REQ-OLD-007.\n")
-        self.assertEqual(self.check()[0], 0)
-
-    def test_common_test_name_prefixes(self):
-        os.remove(os.path.join(self.root, "tests/test_discount.py"))
-        write(self.root, "tests/DiscountTest.php", "function testREQ_DISC_001_ten() {}\nfunction shouldReq_Disc_002() {}\n")
-        self.assertEqual(self.check()[0], 0)
-
-    def test_plain_text_files_do_not_count(self):
-        os.remove(os.path.join(self.root, "tests/test_discount.py"))
-        write(self.root, "tests/ids.txt", "REQ-DISC-001 REQ-DISC-002\n")
-        write(self.root, "tests/test_other.py", "# none\n")
-        self.assertEqual(self.check()[0], 1)
-
-    def test_no_ids_passes_only_for_types_without_requirements(self):
-        write(self.root, self.ch + "/spec.md", "Type: chore\nnothing\n")
-        self.assertEqual(self.check(type="chore")[0], 0)
-        self.assertEqual(self.check(type="refactor")[0], 0)
-        self.assertEqual(self.check(type="story")[0], 1)
 
 
 if __name__ == "__main__":

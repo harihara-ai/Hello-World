@@ -188,12 +188,14 @@ def git_change():
     base = git(root, "rev-parse", "HEAD").strip()
     for d in ("src", "tests"):
         shutil.move(os.path.join(aside, d), os.path.join(root, d))
+    write(root, ch + "/evidence.md", "RED then GREEN recorded by /implement\n")
     report = write(tempfile.mkdtemp(), "coverage.xml", cobertura({"src/discount.py": {1: 1, 2: 1}}, rate=0.72))
     return root, ch, base, report
 
 
 def ci_args(base, report, *extra):
-    return ["--base", base, "--coverage-report", report, "--baseline-total", "70.0", "--test-cmd", TEST_CMD, *extra]
+    baseline = write(tempfile.mkdtemp(), "base.xml", cobertura({}, rate=0.70))
+    return ["--base", base, "--coverage-report", report, "--baseline-report", baseline, "--test-cmd", TEST_CMD, *extra]
 ````
 
 ## tests/run.sh

@@ -15,31 +15,20 @@ purpose: north star rules loaded in every session (L0). Short on purpose; detail
 
 ## Start here
 - Say what you want in plain words, or run `/genie`. It reads state with `kit/scripts/state.sh` and picks the next step.
-- New repo: follow `kit/INSTALL.md`, then `/bootstrap`. The Genie runs `/bootstrap` first when `bootstrapped` is false.
 - Read `kit.manifest.yml` first, then load only the component the step needs. Never load whole folders.
 - State lives in files: `openspec/changes/<name>/status.md` is where any session resumes.
+- New repo: `kit/INSTALL.md`; the Genie runs `/bootstrap` first.
 
 ## The floor (never lowered by the AI)
 - Rules in `kit/core/rules.md` always apply. If a rule blocks you, stop and ask.
-- Gates: `python3 kit/scripts/gate_check.py ready|done --change openspec/changes/<name>`. A failed gate is never waived.
-- Thresholds live in `docs/ai/policy.yml` (the kit floor `kit/core/policy.yml` applies when it is missing).
-  Only humans change policy, sign-off, `kit/`, `.claude/` and `CLAUDE.md`, in their own PR; `gate.diff_scope` fails if you do.
+- Gates: `python3 kit/scripts/gate_check.py auto --change openspec/changes/<name>`. A failed gate is never waived.
+- Files listed in `PROTECTED` (`kit/scripts/kitconst.py`) are changed only by humans, in their own PR.
 
-## Flow per change
-1. Ticket to spec: `kit/templates/spec.md`.
-2. Slice: `/slice` scores every slice (red, or two ambers, means split), then gate `ready` must pass.
-   Open the plan PR. A human merging it is the approval; the code goes in a second PR (`kit/INSTALL.md`).
-3. Build: `/implement`, one scenario per red-green cycle, evidence in `evidence.md`, at most 3 attempts.
-4. Done: gate `done` passes on the code PR (CI runs it with real coverage and the red check), then a human reviews and merges. You never merge.
-
-## Knowledge
-- `docs/ai/index.json` is always loaded. Module cards load when a spec touches the module.
-- Tag derived facts `observed`, `inferred` or `confirmed`. Only `confirmed` becomes a spec.
-- `/refresh` after merges updates only what changed.
-
-## Smallest sufficient change
-- No code without a requirement. No requirement without a test.
-- No feature, flag or abstraction the spec does not ask for. Note out-of-scope ideas; do not build them.
+## Flow per change (two PRs)
+1. Spec from `kit/templates/spec.md`, then `/slice`. Gate `ready` passes; open the plan PR. A human merging it is G1.
+2. On a new branch: `/implement`, one scenario per red-green cycle, evidence in `evidence.md`, at most 3 attempts.
+3. Gate `done` passes on the code PR (CI runs it with real coverage and the red check). A human merges; you never do.
+4. No code without a requirement, no requirement without a test, nothing the spec does not ask for.
 ````
 
 ## core.rules
@@ -61,6 +50,9 @@ purpose: the floor rules every command and playbook obeys; nothing outside core 
 7. **Legacy safety.** Untested code is pinned by characterization tests before it is changed (Slice 0).
 8. **Say what is unverified.** Report only what was run. Mark the rest "not run".
 9. **Detect, then ask.** Adopt a choice when two signals agree. Otherwise ask one multiple-choice question and record the answer.
+10. **What the gates cannot prove.** That tests for brand-new code assert the right thing, that edited tests were not weakened,
+    and that coverage settings in general build files (pyproject.toml, pom.xml) were not loosened. Review these yourself;
+    the human PR review and, where configured, mutation testing are the controls.
 ````
 
 ## core.glossary
@@ -74,7 +66,7 @@ purpose: shared terms used by every component; new terms are added here, not red
 
 | Term | Meaning |
 | --- | --- |
-| Change | One spec, one branch, one PR. Folder `openspec/changes/<name>/` |
+| Change | One spec, two PRs: the plan, then the code. Folder `openspec/changes/<name>/` |
 | Slice | One requirement or a few scenarios, vertically complete, independently testable |
 | Task | One scenario, one red-green cycle |
 | Floor | Minimum bar in the kit's `policy.yml`. Repos may raise it, never lower it silently |
@@ -107,8 +99,8 @@ All under `openspec/changes/<name>/`:
 | `impact.md` | Files and symbols in scope | `/slice` |
 | `slices.md` | Ordered slice plan with scores | `/slice` |
 | `status.md` | `slice:`, `task:`, `next:` lines | Every command, at each step |
-| `evidence.md` | RED then GREEN command and short output per scenario | `/implement` |
-| `metrics.csv` | `slice,est_lines,actual_lines,files,attempts,tokens,minutes` | `/implement` |
+| `evidence.md` | RED then GREEN command and short output per scenario; marks the plan as used once merged | `/implement` |
+| `metrics.csv` | `slice,est_lines,actual_lines,files,attempts` | `/implement` |
 | `inputs/<gate>.json` | Input for one gate | The command that runs the gate |
 | `gates-ready.json`, `gates-done.json` | Last gate_check result | `gate_check.py` |
 
@@ -143,7 +135,7 @@ max_task_attempts: 3
 max_spec_lines: 300
 min_flaky_runs: 3
 banned_words: [fast, easy, user-friendly, secure, robust, simple, quick, intuitive, scalable, flexible]
-ready_gates: [injection, policy_guard, spec_lint, granularity]
+ready_gates: [injection, policy_guard, spec_lint, granularity, diff_scope]
 done_gates: [injection, policy_guard, trace_check, coverage, diff_scope, red_check]
 ````
 
@@ -177,17 +169,19 @@ Put every pattern in `PROTECTED` in `kit/scripts/kitconst.py` into `CODEOWNERS`.
 Local runs are early feedback: the agent controls its own working copy. The required CI job runs the approved
 kit from the target branch, in its own worktree, against the PR checkout:
 ```
-git fetch origin <target>
-BASE=$(git merge-base HEAD origin/<target>)
+git fetch origin <target> && BASE=$(git merge-base HEAD origin/<target>)
 git worktree add ../approved origin/<target>
-GATE="python3 ../approved/kit/scripts/gate_check.py --repo . --change auto --base $BASE"
-$GATE ready                                  # plan PRs
-<run the tests with coverage on HEAD, writing the report outside the checkout, e.g. ../out/coverage.xml>
-<the same on BASE (or reuse the target branch's last report) for ../out/base.xml>
-$GATE done --coverage-report ../out/coverage.xml --baseline-report ../out/base.xml --test-cmd "<test command>"
+<run the tests with coverage; the step must pass; write the report outside the checkout: ../out/coverage.xml>
+python3 ../approved/kit/scripts/gate_check.py auto --repo . --change auto --base $BASE \
+  --coverage-report ../out/coverage.xml --baseline-report <the target's last coverage report> --test-cmd "<test command>"
 ```
-`--change auto` finds the PR's one change folder. With none, the job passes only if no production code changed
-(install, bootstrap and human kit or policy PRs; CODEOWNERS covers those). Make the job a required check.
+The gate picks the stage: ready for a plan PR (it may change only its change folder), done for a code PR. A PR
+with no change folder passes only if it touches docs or human-owned files. Keep each run's coverage report as an
+artifact; the target's latest is the next baseline, so the base is never re-tested. `{tests}` in the test command
+is replaced by the changed test files. No coverage tool (Delphi): a signed `min_changed_line_coverage: 0`.
+Make the job a required check.
+
+Hotfix at night: an admin merges with the check overridden, then the plan PR and the gates follow within 5 working days.
 
 ## Upgrade
 Replace `kit/` and `kit.manifest.yml` in one human PR, copy the commands again (Files, step 2), then run `/refresh`.

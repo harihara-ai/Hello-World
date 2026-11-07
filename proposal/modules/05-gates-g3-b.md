@@ -119,12 +119,13 @@ Section 10.4 check 1 (red then green). Round 3 H05: changed tests must fail on b
 
 ````python file=kit/gates/red_check.py
 #!/usr/bin/env python3
-"""purpose: prove the changed tests detect the change: run them against the base commit's production code.
+"""purpose: prove the changed tests detect the change: run them on the base commit's production code.
 
-Input: {"base": git ref, "type": work type, "test_cmd": "command"}. The test command comes from CI (gate_check
---test-cmd). Story, NFR, bug and hotfix: the changed tests must fail on base code and pass on the change (red,
-then green; spec 10.4 #1). Chore, refactor and tests: they must pass on both (behaviour kept). Spike and docs:
-nothing to check. Runs code, so it belongs in CI's sandbox; outside git it only warns.
+Input: {"base": git ref, "type": work type, "test_cmd": "command, optionally with {tests}"}. CI passes the test
+command. For story, NFR, bug and hotfix the changed tests must FAIL with the base production code (red; spec
+10.4 #1). The base code is put back in this checkout for one run (dependencies stay in place), then restored.
+CI's own test step proves green. Other types: nothing to check. Known limit: tests for brand-new code are only
+shown to touch it; AI test review and PR review judge what they assert (kit/core/rules.md).
 """
 import shlex
 import shutil
@@ -137,65 +138,69 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from gateio import UsageError, finding, run  # noqa: E402
 from kitconst import RED_TYPES, TEST_EXT, is_test_file  # noqa: E402
 
-SKIP_TYPES = {"spike", "docs"}
+ERRORS = {126, 127, -1}  # the runner did not start or timed out: not a test result
 
 
-def git(*args, cwd=None):
-    p = subprocess.run(["git", *args], capture_output=True, text=True, cwd=cwd)
+def git(*args):
+    p = subprocess.run(["git", *args], capture_output=True)
     if p.returncode != 0:
-        raise UsageError("git %s failed: %s" % (args[0], p.stderr.strip()))
+        raise UsageError("git %s failed: %s" % (args[0], p.stderr.decode("utf-8", "replace").strip()))
     return p.stdout
 
 
-def changed_tests(base):
+def changes(base):
+    """[(status, path)] since base, without renames; untracked files count as added."""
     if not re.fullmatch(r"[\w./~^@-]+", base) or base.startswith("-"):
         raise UsageError("bad base ref")
-    names = git("diff", "--no-ext-diff", "--name-only", "--no-renames", "--diff-filter=d", base, "--").splitlines()
-    names += git("ls-files", "--others", "--exclude-standard").splitlines()
-    return sorted({n for n in names if is_test_file(n) and n.lower().endswith(TEST_EXT) and os.path.isfile(n)})
+    out = [tuple(line.split("\t", 1)) for line in git("diff", "--no-ext-diff", "--name-status", "--no-renames",
+                                                     base, "--").decode().splitlines()]
+    out += [("A", p) for p in git("ls-files", "--others", "--exclude-standard").decode().splitlines()]
+    return out
 
 
-def run_tests(cmd, cwd):
+def run_tests(cmd):
     try:
-        return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=1800).returncode
+        return subprocess.run(cmd, capture_output=True, timeout=1800).returncode
     except (OSError, subprocess.TimeoutExpired):
         return -1
 
 
 def check(p):
     wtype = p.get("type", "story")
-    inside = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], capture_output=True, text=True)
-    if inside.stdout.strip() != "true":
+    if wtype not in RED_TYPES:
+        return [finding("nothing_to_check", "red check applies to story, nfr, bug and hotfix", "", "warn")], {}
+    if subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], capture_output=True).returncode != 0:
         return [finding("needs_git", "red check runs in a git repo (CI)", "", "warn")], {}
-    if wtype in SKIP_TYPES:
-        return [finding("nothing_to_check", "no tests to prove for a %s change" % wtype, "", "warn")], {}
-    tests = changed_tests(p.get("base", ""))
+    base, delta = p.get("base", ""), changes(p.get("base", ""))
+    tests = sorted(f for s, f in delta if s != "D" and is_test_file(f) and f.lower().endswith(TEST_EXT))
     if not tests:
-        if wtype in RED_TYPES:
-            return [finding("no_new_tests", "a %s change needs a changed test that fails without it" % wtype)], {}
-        return [finding("nothing_to_check", "no changed tests", "", "warn")], {}
+        return [finding("no_new_tests", "a %s change needs a changed test that fails without it" % wtype)], {}
     if not p.get("test_cmd"):
         return [finding("no_test_cmd", "CI must pass --test-cmd")], {"tests": tests}
-    cmd = shlex.split(p["test_cmd"]) if isinstance(p["test_cmd"], str) else list(p["test_cmd"])
-    tmp = tempfile.mkdtemp(prefix="red-")
-    wt = os.path.join(tmp, "base")
-    git("worktree", "add", "--detach", "-q", wt, p["base"])
+    cmd = p["test_cmd"].replace("{tests}", " ".join(shlex.quote(t) for t in tests))
+    prod = [(s, f) for s, f in delta if not is_test_file(f)]
+    keep = tempfile.mkdtemp(prefix="red-")
     try:
-        for t in tests:
-            os.makedirs(os.path.dirname(os.path.join(wt, t)) or wt, exist_ok=True)
-            shutil.copy(t, os.path.join(wt, t))
-        on_base = run_tests(cmd, wt)
+        for i, (s, f) in enumerate(prod):
+            if s != "D":
+                shutil.copy2(f, os.path.join(keep, str(i)))
+            if s == "A":
+                os.remove(f)
+            else:
+                with open(f, "wb") as fh:
+                    fh.write(git("show", "%s:%s" % (base, f)))
+        on_base = run_tests(shlex.split(cmd))
     finally:
-        git("worktree", "remove", "--force", wt)
-        shutil.rmtree(tmp, ignore_errors=True)
-    on_head, f = run_tests(cmd, "."), []
-    if on_head != 0:
-        f.append(finding("tests_fail_on_head", "the tests fail on the change (exit %d)" % on_head))
-    if wtype in RED_TYPES and on_base == 0:
-        f.append(finding("tests_pass_on_base", "the changed tests also pass without the change: they do not detect it"))
-    if wtype not in RED_TYPES and on_base != 0:
-        f.append(finding("behaviour_changed", "a %s change must keep behaviour, but its tests fail on base code" % wtype))
-    return f, {"tests": tests, "exit_base": on_base, "exit_head": on_head}
+        for i, (s, f) in enumerate(prod):
+            if s == "D":
+                os.remove(f) if os.path.exists(f) else None
+            else:
+                shutil.copy2(os.path.join(keep, str(i)), f)
+        shutil.rmtree(keep, ignore_errors=True)
+    if on_base in ERRORS:
+        return [finding("runner_error", "the test command could not run (exit %d)" % on_base)], {"tests": tests}
+    f = [] if on_base else [finding("tests_pass_on_base", "the changed tests pass without the change: they do not detect it")]
+    return f, {"tests": tests, "exit_base": on_base}
 
 
 if __name__ == "__main__":

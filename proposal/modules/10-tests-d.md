@@ -52,7 +52,7 @@ class ListedFiles(unittest.TestCase):
 
     def test_change_folder_and_bytecode_exempt(self):
         ch = "openspec/changes/X-1"
-        rc, _, log = scope([ch + "/gates-ready.json", "src/__pycache__/a.cpython-313.pyc", "src/a.py"], ["src/a.py"], change_dir=ch)
+        rc, _, log = scope([ch + "/gates-ready.json", "src/a.py"], ["src/a.py"], change_dir=ch)
         self.assertEqual(rc, 0, log)
 
     def test_empty_scan_fails(self):
@@ -123,6 +123,12 @@ class GitMode(unittest.TestCase):
         ch = "openspec/changes/X-1"
         rc, out, _ = scope([ch + "/spec.md", "src/a.py"], ["src/a.py"], change_dir=ch, plan_files=[ch + "/spec.md"])
         self.assertIn("plan_changed", rules(out))
+
+
+    def test_added_bytecode_fails(self):
+        rc, out, _ = scope(["src/__pycache__/cart.cpython-313.pyc", "src/a.py"], ["src/*"])
+        self.assertEqual(rc, 1)
+        self.assertIn("bytecode_added", rules(out))
 
 
 if __name__ == "__main__":

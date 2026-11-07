@@ -14,7 +14,7 @@ ALLOWED_EXT = {".md", ".yml", ".yaml", ".json", ".sh", ".py", ".txt", ".feature"
 # Files that steer an agent, run code on checkout or in CI; keep in step with kit/scripts/kitconst.py PROTECTED.
 HIGH_RISK_DIRS = {".github", ".husky", "hooks", ".git", ".vscode", ".idea", ".gitlab", ".claude", "gates", "scripts"}
 HIGH_RISK_NAMES = ("install.sh", "setup.sh", "postinstall", "preinstall", ".mcp.json", "conftest.py",
-                   ".pre-commit-config.yaml", ".gitlab-ci.yml")
+                   ".pre-commit-config.yaml", ".gitlab-ci.yml", "install.md")
 FENCE = re.compile(r"^(`{3,}|~{3,})(.*)$")
 FILE_ATTR = re.compile(r"(?:^|\s)file=(\S+)")
 

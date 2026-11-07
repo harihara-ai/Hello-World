@@ -34,7 +34,7 @@ Sections 3, 4, 5, 9.
 
 ````md file=kit/.claude/commands/bootstrap.md
 ---
-description: Set up a repo once: probe tools, detect practices, write docs/ai knowledge files and policy. Safe to re-run.
+description: Set up a repo once: probe tools, detect practices, write docs/ai knowledge files. Safe to re-run.
 argument-hint: 
 ---
 
@@ -117,7 +117,7 @@ Follow `kit/core/rules.md`. Arguments: `$ARGUMENTS`.
 3. Refactor only what you just wrote, tests green. Commit `REQ-<AREA>-<NNN>: <what>`.
 4. Append a row to `metrics.csv`. Update `status.md`.
 5. After 3 failed attempts on a task: stop and report with evidence. Out-of-scope ideas go under "Out of scope noticed" in `evidence.md`.
-Never edit a test to make it pass. Never touch files outside `impact.md`.
+Never edit a test to make it pass. Never touch files outside the merged `inputs/diff_scope.json`.
 ````
 
 ## command.gate
@@ -134,11 +134,11 @@ purpose: Run the deterministic gates for ready or done, then an AI review, then 
 
 Follow `kit/core/rules.md`. Arguments: `$ARGUMENTS`.
 
-1. Inputs: `inputs/granularity.json` and `inputs/diff_scope.json` come from `/slice`. For done, run the tests with coverage and pass `--coverage-report <report>`, `--baseline-total <from docs/ai/baseline.md>` and `--test-cmd "<test command>"` (CI passes its own).
-2. Run `python3 kit/scripts/gate_check.py <stage> --change openspec/changes/<name>`.
+1. Inputs: `inputs/granularity.json` and `inputs/diff_scope.json` come from `/slice`. For done, run the tests with coverage and pass `--coverage-report <report>`, `--baseline-report <target's last report>` and `--test-cmd "<test command>"` (CI passes its own).
+2. Run `python3 kit/scripts/gate_check.py auto --change openspec/changes/<name>` (it picks ready or done).
 3. If it fails: show each failing finding in one line and stop. Do not edit gates, tests or policy to pass.
-4. If it passes: AI review. Ready: ambiguity and open questions. Done: tests assert behaviour, no weakened assertions.
-5. Ask the human for sign-off and record it in `status.md`.
+4. If it passes: AI review. Ready: ambiguity and open questions. Done: tests assert behaviour, no weakened assertions
+   (the gates cannot prove this; see `kit/core/rules.md` rule 10). Then open the PR; the human merge is the sign-off.
 ````
 
 ## command.safety_net

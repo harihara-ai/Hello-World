@@ -4,10 +4,10 @@ round: 4 (frozen at 7ce6a0a)
 phase: 4
 certification_target: Silver
 round_cap: 6
-trap_score: 20/20 cases (critical 15/15, other 5/5, false alarms 0) on pinned workspace
+trap_score: 20/20 cases (critical 15/15, other 5/5, false alarms 0) on round 4 fixes, scratch tangle (not yet pinned)
 trap_target: all critical, 95 percent others
 new_findings_threshold: 2 per round
-open_blockers: 0 (round 3 fixes pinned; round 4 re-checks)
+open_blockers: 0 after round 4 (8 raised: 5 fixed, 3 closed as recorded floor limits J04, J05, J06 pending human arbitration)
 open_majors: deferred G19 (symbol-level scope), G20 (no-coverage stacks), F17; G18 in part
 consecutive_clean_rounds: 0 (round 3 had 7 blockers)
 doc_revision_synced: not synced (write-back list in findings.md)
