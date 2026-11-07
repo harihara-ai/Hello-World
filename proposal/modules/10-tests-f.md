@@ -52,6 +52,19 @@ class GitGateCheck(unittest.TestCase):
         rc, _, log = gate_check(self.root, "auto", "done", "--base", base)
         self.assertEqual(rc, 0, log)
 
+    def test_no_change_folder_kit_upgrade_passes(self):
+        # pilot P01: an upgrade PR replaces kit/; a .feature template under kit/ is human-owned, not a test
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "code merged")
+        base = git(self.root, "rev-parse", "HEAD").strip()
+        write(self.root, "kit/templates/scenario.feature", "Feature: x\n")
+        write(self.root, "kit/scripts/new_helper.py", "x = 1\n")
+        rc, out, log = gate_check(self.root, "auto", "done", "--base", base)
+        self.assertEqual(rc, 0, log)
+        write(self.root, "tests/test_extra.py", "def test_x():\n    pass\n")
+        rc, out, log = gate_check(self.root, "auto", "done", "--base", base)
+        self.assertEqual(rc, 1, log)
+
     def test_plan_must_be_in_the_base_commit(self):
         import shutil
         root, ch = make_repo()

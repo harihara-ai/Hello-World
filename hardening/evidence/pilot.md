@@ -128,3 +128,15 @@ Tokens and minutes per slice: not measured. Escapes after merge: none known yet 
 - Four weeks of normal use; escape log; token and time metrics per slice; mutation testing (fix plan item 2, PIT and
   Stryker); `/genie` and `/learn` driven end to end by an agent (steps were hand-run from the command files);
   CL-Q1 root cause; Apache's own CI on the fork (fails; not required).
+
+## Fixes for P01-P05 (2026-11-07, source; pin awaits the owner)
+- RED (scratch tangle, new or extended tests): `test_no_change_folder_kit_upgrade_passes` 1 != 0;
+  `test_change_folder_allows_only_plan_and_evidence_files` 1 != 0 (metrics.csv); `test_coverage_config_is_protected`
+  .c8rc not protected.
+- Fix: P01 `gate_check.py` no-change-folder rule skips PROTECTED paths (tests under `kit/` included); P02 `.c8rc*`
+  in `PROTECTED`; P03 `metrics.csv` in `CHANGE_FOLDER_FILES`; P04 `kit/playbooks/bug.md` step 2 (throwaway-fix test
+  run before the plan PR); P05 `kit/INSTALL.md` (merge the quarantine PR before the ruleset).
+- GREEN (scratch): the two test files 41 OK; lint 49 clean; tests/run.sh unit 171, contract 5, mutation 14 OK;
+  run_traps 22/22, critical 17/17, other 5/5, false alarms 0. Scratch pin: changed=6 (`kit/INSTALL.md`,
+  `kit/scripts/gate_check.py`, `kit/scripts/kitconst.py` HIGH-RISK; `kit/playbooks/bug.md`; 2 test files).
+- Not run: the fixes on the pilot repos (they run kit 1.0.4 until upgraded).
