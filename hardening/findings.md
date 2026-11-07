@@ -74,7 +74,7 @@ closes below follow the same rule: facts come from the base commit or git, never
 | G24 | 2 | minor | install | six manual steps, two copies of commands (R4-2-04) | defer | package stage (phase 6) ships repo-root layout | open (phase 6) |
 | G25 | 2 | minor | core/policy.yml, glossary | sign-off shape undocumented; red/amber, L0 undefined (R4-2-05, -07) | accept | three-line example and glossary rows | fixed (pinned round 2) |
 | G26 | 2 | minor | glossary | G1-G4 and ready/done are two vocabularies (R4-2-06) | reject | glossary already maps them; spec uses both | closed |
-| G27 | 2 | minor | implement.md | approval in status.md is not proof (R4-2-08) | defer | real control is human PR review (G4) plus CI (G01) | open (later) |
+| G27 | 2 | minor | implement.md | approval in status.md is not proof (R4-2-08) | defer | closed by H04 (approval = merged plan PR) | superseded by H04 |
 | G28 | 2 | minor | INSTALL.md, learn.md | upgrade does not re-copy commands; learn does not write module_paths (R1 notes) | accept | one line each | fixed (pinned round 2) |
 
 Doc write-back added in round 2: section 10.6 and 22.4 (CI is the authoritative gate run; base, policy and sign-off from the target branch), section 8 (work type may only tighten gates; no hotfix fast track).
@@ -97,8 +97,8 @@ Root causes:
 | H01 | 3 | blocker | INSTALL.md CI | RC-B overlay hides PR edits and runs PR-added kit files; pathspec fails when policy files are absent | accept | approved kit in its own worktree; --repo is the PR checkout; --base merge-base | open |
 | H02 | 3 | blocker | coverage, gate_check | RC-C baseline_total and report path come from the PR (R2-3-03, R1-3-06, R3-3-02) | accept | --coverage-report (repeatable) and --baseline-report or --baseline-total flags only | open |
 | H03 | 3 | blocker | coverage | pragma: no cover on added code passes (R2-3-04) | accept | coverage-ignore markers on added lines fail; coverage config files join PROTECTED | open |
-| H04 | 3 | blocker | gate_check done | RC-D approved plan re-read from the PR (R2-3-06) | proposed | needs owner decision: two PRs per change (plan, then code) | open (decision) |
-| H05 | 3 | blocker | new gate red_check | RC-E tests with no asserts pass all gates (R2-3-05) | proposed | needs owner decision: CI runs the test command twice | open (decision) |
+| H04 | 3 | blocker | gate_check done | RC-D approved plan re-read from the PR (R2-3-06) | accept | owner chose two PRs: plan PR merged by a human = G1 approval; done reads the plan from the base commit (also closes G27) | open |
+| H05 | 3 | blocker | new gate red_check | RC-E tests with no asserts pass all gates (R2-3-05) | accept | owner chose red_check: changed tests run against base production code in CI | open |
 | H06 | 3 | major | gate_check | planted .pyc loaded by gate_check itself; zero gates ran and passed (R2-3-02, R2-2-04) | accept | set pycache prefix before imports; fail if a floor gate did not run; tangle --check and package reject __pycache__ | open |
 | H07 | 3 | major | INSTALL, gate_check | no rule for the change name or PRs without a change folder (R1-3-04, R4-3-03) | accept | --change auto: one change folder from the diff; none and production code changed = fail | open |
 | H08 | 3 | major | INSTALL | base is the target tip, not the merge-base; CI artifacts count as changes (R1-3-03, R2-3-07, R3-3-04) | accept | recipe computes merge-base; reports written outside the checkout | open |

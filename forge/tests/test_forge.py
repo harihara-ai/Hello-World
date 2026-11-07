@@ -124,8 +124,12 @@ class TangleTests(unittest.TestCase):
         self.assertEqual(self.tangle("--check")[0], 0)
         os.makedirs(os.path.join(self.out, "kit", "__pycache__"))
         with open(os.path.join(self.out, "kit", "__pycache__", "x.pyc"), "w") as fh:
-            fh.write("ignored")
-        self.assertEqual(self.tangle("--check")[0], 0)
+            fh.write("planted")
+        rc, out = self.tangle("--check")
+        self.assertEqual(rc, 1)
+        self.assertIn("__pycache__", out)
+        import shutil
+        shutil.rmtree(os.path.join(self.out, "kit", "__pycache__"))
         with open(os.path.join(self.out, "kit", "a.md"), "a") as fh:
             fh.write("edited by hand\n")
         rc, out = self.tangle("--check")
@@ -139,7 +143,8 @@ class TangleTests(unittest.TestCase):
         self.assertIn("not in lock", out)
 
     def test_agent_steering_files_are_high_risk(self):
-        for path in ("kit/.claude/commands/genie.md", "kit/CLAUDE.md", "kit/sub/CLAUDE.md"):
+        for path in ("kit/.claude/commands/genie.md", "kit/CLAUDE.md", "kit/sub/CLAUDE.md",
+                     "kit/gates/coverage.py", "kit/scripts/gate_check.py", "kit/core/policy.yml"):
             self.write(block(path, "x"))
             rc, out = self.pin()
             self.assertEqual(rc, 1, path)

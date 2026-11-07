@@ -60,7 +60,8 @@ with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         if os.path.isfile(base):
             z.write(base)
         elif os.path.isdir(base):
-            for root, _d, files in os.walk(base):
+            for root, dirs, files in os.walk(base):
+                dirs[:] = [d for d in dirs if d != "__pycache__"]
                 for f in files:
                     p = os.path.join(root, f)
                     z.write(p)

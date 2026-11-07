@@ -12,7 +12,7 @@ import sys
 
 ALLOWED_EXT = {".md", ".yml", ".yaml", ".json", ".sh", ".py", ".txt", ".feature", ".toml"}
 # Files that steer an agent, run code on checkout or in CI; keep in step with kit/scripts/kitconst.py PROTECTED.
-HIGH_RISK_DIRS = {".github", ".husky", "hooks", ".git", ".vscode", ".idea", ".gitlab", ".claude"}
+HIGH_RISK_DIRS = {".github", ".husky", "hooks", ".git", ".vscode", ".idea", ".gitlab", ".claude", "gates", "scripts"}
 HIGH_RISK_NAMES = ("install.sh", "setup.sh", "postinstall", "preinstall", ".mcp.json", "conftest.py",
                    ".pre-commit-config.yaml", ".gitlab-ci.yml")
 FENCE = re.compile(r"^(`{3,}|~{3,})(.*)$")
@@ -75,13 +75,12 @@ def path_problems(path):
 def is_high_risk(path):
     parts = path.lower().split("/")
     return (any(p in HIGH_RISK_DIRS for p in parts[:-1]) or any(n in parts[-1] for n in HIGH_RISK_NAMES)
-            or parts[-1] == "claude.md")
+            or parts[-1] in ("claude.md", "policy.yml"))
 
 
 def workspace_problems(outdir, lock):
     found, problems = set(), []
-    for root, dirs, files in os.walk(outdir):
-        dirs[:] = [d for d in dirs if d != "__pycache__"]
+    for root, _dirs, files in os.walk(outdir):  # __pycache__ is not in the lock, so planted bytecode is refused
         for f in files:
             rel = os.path.relpath(os.path.join(root, f), outdir).replace(os.sep, "/")
             found.add(rel)
