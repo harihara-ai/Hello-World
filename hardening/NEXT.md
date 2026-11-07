@@ -42,7 +42,8 @@ Start with item 1 and stop when it is done.
 - **B2. N01 fix (a)** (new session after the owner links Claude's GitHub to `harihara-ai-bot`, Write collaborator since
   2026-11-07). Check `get_me` is the bot; re-open w1 as the bot on trial-main (expect code-owner review required, not
   mergeable without the owner's approval); owner approves and merges clean PR #3 (baseline chain). A saved API token
-  for the bot was refused by the session (github.com uses the GitHub connection only). Owner: rulesets per part 4 of
+  for the bot was refused by the session (github.com uses the GitHub connection only). Owner linked Claude's GitHub to
+  harihara-ai-bot (2026-11-07); the old session's GitHub tools then failed (`invalid session`): start B2 fresh. Owner: rulesets per part 4 of
   session B (block force pushes on trial-main; master ruleset; admin bypass for PRs only). Append to `evidence/hosted-ci.md`.
 - **C. Pilot** per the Gold plan, with item 2 (diff-scoped mutation testing) set up per stack.
 
