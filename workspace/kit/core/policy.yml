@@ -3,6 +3,7 @@
 # list values may only grow. Copy to docs/ai/policy.yml in the target repo.
 version: 1
 min_changed_line_coverage: 80
+max_total_drop: 0.1
 max_slice_scenarios: [3, 5]
 max_slice_modules: [1, 2]
 max_slice_contracts: [0, 1]
@@ -13,5 +14,5 @@ max_task_attempts: 3
 max_spec_lines: 300
 min_flaky_runs: 3
 banned_words: [fast, easy, user-friendly, secure, robust, simple, quick, intuitive, scalable, flexible]
-ready_gates: [injection, spec_lint, granularity]
-done_gates: [injection, trace_check, coverage, diff_scope, policy_guard]
+ready_gates: [injection, policy_guard, spec_lint, granularity]
+done_gates: [injection, policy_guard, trace_check, coverage, diff_scope]

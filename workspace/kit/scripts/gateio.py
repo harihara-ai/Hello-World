@@ -7,13 +7,17 @@ class UsageError(Exception):
     pass
 
 
+def _no_constant(name):
+    raise UsageError("%s is not allowed in gate input" % name)
+
+
 def read_input(argv):
     if len(argv) != 2:
         raise UsageError("usage: %s INPUT.json|-" % argv[0])
     if argv[1] == "-":
-        return json.load(sys.stdin)
+        return json.load(sys.stdin, parse_constant=_no_constant)
     with open(argv[1], encoding="utf-8") as fh:
-        return json.load(fh)
+        return json.load(fh, parse_constant=_no_constant)
 
 
 def finding(rule, message, where="", severity="fail"):

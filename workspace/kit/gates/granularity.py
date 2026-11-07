@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """purpose: score each slice green, amber or red (section 11.3); any red or two ambers means split.
 
+A slice with "kind": "characterization" (Slice 0) is not held to the size limits: it only pins behaviour.
+
 Input: {"slices": [{id, title, scenarios, modules, contracts, symbols, lines, files, untested, testable}],
         "policy": {max_slice_<measure>: [green_max, amber_max]}}. Output: gate JSON plus per-slice scores.
 """
@@ -16,25 +18,30 @@ UNTESTED = {"none": "green", "characterized": "amber"}
 TESTABLE = {"yes": "green", "stub": "amber"}
 
 
+SIZE_ONLY = ("lines", "symbols", "files")
+
+
 def score(s, pol):
-    reasons = []
+    reasons, char = [], s.get("kind") == "characterization"
     for m, default in DEFAULTS.items():
+        if char and m in SIZE_ONLY:
+            continue
         green, amber = pol.get("max_slice_" + m, default)
         v = s.get(m)
-        if not isinstance(v, (int, float)):
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
             reasons.append(("red", "%s missing" % m))
         elif v > amber:
             reasons.append(("red", "%s %s > %s" % (m, v, amber)))
         elif v > green:
             reasons.append(("amber", "%s %s > %s" % (m, v, green)))
-    u = UNTESTED.get(s.get("untested"), "red")
+    u = "green" if char else UNTESTED.get(s.get("untested"), "red")
     if u != "green":
         reasons.append((u, "untested code: %s (characterization slice must come first)" % s.get("untested")))
     t = TESTABLE.get(s.get("testable"), "red")
     if t != "green":
         reasons.append((t, "independently testable: %s" % s.get("testable")))
     if re.search(r"\b(and|or)\b", str(s.get("title", "")), re.I):
-        reasons.append(("red", "title has 'and'/'or': check for a hidden second requirement"))
+        reasons.append(("amber", "title has 'and'/'or': check for a hidden second requirement"))
     levels = [lvl for lvl, _ in reasons]
     overall = "red" if "red" in levels else "amber" if levels else "green"
     split = overall == "red" or levels.count("amber") >= 2

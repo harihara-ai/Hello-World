@@ -5,7 +5,7 @@ argument-hint:
 
 purpose: Update docs/ai after merges, only for modules whose files changed since verified_sha.
 
-Follow `CLAUDE.md` and `kit/core/rules.md`. Arguments: `$ARGUMENTS`.
+Follow `kit/core/rules.md`. Arguments: `$ARGUMENTS`.
 
 1. For each index entry, `git diff --name-only <verified_sha>..HEAD` on its module paths.
 2. Nothing changed: say so and stop.

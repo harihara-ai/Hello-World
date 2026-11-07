@@ -21,12 +21,22 @@ class SpecLint(unittest.TestCase):
 
     def test_vague_words_fail(self):
         rc, out, _ = lint(CLEAN_SPEC.replace("Coupons.", "Coupons.").replace(
-            "Loyal customers pay full price.", "The checkout must be fast and user-friendly."))
+            "Orders of 100.00 or more get a 10 percent discount.", "The checkout must be fast and user-friendly."))
         self.assertEqual(rc, 1)
         self.assertIn("vague_word", rules(out))
 
-    def test_vague_word_with_number_allowed(self):
-        rc, _, log = lint(CLEAN_SPEC.replace("pay full price.", "pay full price; pricing is fast (under 50 ms)."))
+    def test_vague_word_with_measure_allowed(self):
+        rc, _, log = lint(CLEAN_SPEC.replace("get a 10 percent discount.", "get a 10 percent discount, priced fast (under 50 ms)."))
+        self.assertEqual(rc, 0, log)
+
+    def test_unrelated_number_does_not_excuse_vague_word(self):
+        rc, out, _ = lint(CLEAN_SPEC.replace("get a 10 percent discount.", "get a 10 percent discount and the screen is fast."))
+        self.assertIn("vague_word", rules(out))
+
+    def test_vague_words_outside_scored_sections_and_in_backticks_ignored(self):
+        text = CLEAN_SPEC.replace("Loyal customers pay full price.", "The quick fix in `SecureRandom` is slow.")
+        text = text.replace("Coupons.", "A simple redesign.")
+        rc, _, log = lint(text)
         self.assertEqual(rc, 0, log)
 
     def test_requirement_without_id_fails(self):
@@ -52,9 +62,22 @@ class SpecLint(unittest.TestCase):
         rc, out, _ = lint(CLEAN_SPEC.replace("Ticket: SHOP-12\n", "").replace("## Out of scope\n", "## Notes\n"))
         self.assertTrue({"ticket", "section"} <= rules(out))
 
-    def test_nfr_needs_number(self):
-        rc, out, _ = lint(CLEAN_SPEC.replace("## Non-functional\nnone", "## Non-functional\nPricing is quick."))
-        self.assertIn("nfr_threshold", rules(out))
+    def test_nfr_needs_measure(self):
+        for nfr in ("Pricing is quick.", "The fee page must be secure and robust for v2."):
+            rc, out, _ = lint(CLEAN_SPEC.replace("## Non-functional\nnone", "## Non-functional\n" + nfr))
+            self.assertIn("nfr_threshold", rules(out), nfr)
+        rc, _, log = lint(CLEAN_SPEC.replace("## Non-functional\nnone", "## Non-functional\nPricing p95 under 200 ms; WCAG 2.1 AA."))
+        self.assertEqual(rc, 0, log)
+
+    def test_scenario_outline_and_error_by_then(self):
+        text = CLEAN_SPEC.replace("Scenario: error - negative total rejected", "Scenario Outline: negative totals")
+        rc, _, log = lint(text)
+        self.assertEqual(rc, 0, log)
+
+    def test_chore_needs_no_requirements(self):
+        chore = "# Change: tidy\nTicket: OPS-1\nType: chore\n\n## Problem\nOld logging.\n\n## Outcome\nOne logger.\n\n## Non-functional\nnone\n\n## Out of scope\nBehaviour.\n\n## Open questions\nnone\n"
+        rc, _, log = lint(chore)
+        self.assertEqual(rc, 0, log)
 
     def test_too_long_fails(self):
         rc, out, _ = lint(CLEAN_SPEC, max_spec_lines=10)

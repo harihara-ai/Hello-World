@@ -22,7 +22,6 @@ class Probe(unittest.TestCase):
 
     def test_fallback_when_no_language_server(self):
         rc, out, _ = probe({"serena": {"ok": False, "reason": "no language server for Delphi"},
-                            "tree-sitter-analyzer": {"ok": False, "reason": "Delphi unsupported"},
                             "ctags": {"ok": True}}, ["codenav"])
         c = out["capabilities"]["codenav"]
         self.assertEqual(c["chosen"], "ctags")
@@ -43,6 +42,13 @@ class Probe(unittest.TestCase):
         self.assertIn("purpose:", text)
         self.assertIn("ctags", text)
         self.assertIn("crash", text)
+
+    def test_tracker_ranks_adapters(self):
+        rc, out, _ = probe({"jira": {"ok": False, "reason": "403 no write"}, "file": {"ok": True}}, ["tracker"])
+        self.assertEqual(out["capabilities"]["tracker"]["chosen"], "file")
+
+    def test_tools_without_adapter_are_unknown(self):
+        self.assertEqual(probe({}, ["repomap"])[0], 2)
 
     def test_unknown_capability_usage_error(self):
         self.assertEqual(probe({}, ["teleport"])[0], 2)

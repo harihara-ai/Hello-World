@@ -10,16 +10,9 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gateio import UsageError, finding, run  # noqa: E402
 
-RANKED = {
-    "codenav": ["serena", "tree-sitter-analyzer", "ast-grep", "ctags"],
-    "repomap": ["graphify", "tree-sitter-analyzer", "ctags-map"],
-    "spec": ["openspec", "spec-kit", "markdown"],
-    "tracker": ["tracker-mcp", "tracker-cli", "tracker-file"],
-    "browser_ui": ["playwright-mcp", "playwright-cli"],
-    "desktop_ui": ["flaui-mcp", "windows-mcp", "flaui-tests"],
-    "docs": ["context7", "vendored-docs"],
-    "scan": ["semgrep", "native-linters"],
-    "coverage": ["diff-cover", "coverage-script"],
+RANKED = {  # keyed by adapter name in kit.manifest.yml; add a tool by adding its adapter first
+    "codenav": ["serena", "ctags"],
+    "tracker": ["github", "jira", "azdo", "file"],
 }
 
 

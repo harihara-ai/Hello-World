@@ -33,6 +33,12 @@ class State(unittest.TestCase):
         self.assertEqual(s["branch"], "main")
         self.assertIsNone(s["ticket"])
         self.assertFalse(s["change_exists"])
+        self.assertFalse(s["bootstrapped"])
+
+    def test_bootstrapped_when_index_and_policy_exist(self):
+        write(self.d, "docs/ai/index.json", "[]")
+        write(self.d, "docs/ai/policy.yml", "version: 1\n")
+        self.assertTrue(self.state(self.d)[1]["bootstrapped"])
 
     def test_change_with_status_and_gate(self):
         git(self.d, "checkout", "-q", "-b", "feature/SHOP-12-add-discount")

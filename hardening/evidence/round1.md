@@ -21,3 +21,7 @@ Runner unit tests run against workspace/, so their GREEN is recorded after the p
 
 ## Rebuild on scratch lock
 tangle 66 files, identical to dev tree (diff -r); kit_lint 'OK: 47 components clean'; kit tests unit 111, contract 5, mutation 14 all OK.
+
+## Pin and GREEN on workspace (2026-11-07, human-approved)
+PINNED 66 files. added=4 changed=40 removed=0 (no HIGH-RISK). selftest: lock check OK, forge 21 OK, unit 111 OK, contract 5 OK, mutation 14 OK.
+Runner unit tests on workspace: OK. run_traps: 18/18 cases; critical 13/13; other 5/5; false alarms 0.

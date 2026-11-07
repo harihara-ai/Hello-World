@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """purpose: refuse any policy change that loosens the floor unless a human sign-off names that key.
 
-Input: {"old": floor.yml, "new": policy.yml, "signoff": signoff.json}. min_* may only rise, max_* may only
-fall, lists may only grow, keys may not be removed. Sign-off JSON: {approved_by, reason, keys: [...]}.
+Input: {"old": floor.yml, "baselines": [base-commit policy.yml], "new": policy.yml, "signoff": signoff.json}.
+min_* may only rise, max_* may only fall, lists may only grow, keys may not be removed, against the floor and
+every baseline. Sign-off JSON: {approved_by, reason, keys: {key: approved value}}.
 """
 import json
 import os
@@ -34,24 +35,27 @@ def loosened(old, new):
     return out
 
 
-def signed_keys(path):
+def signed(path):
     if not path or not os.path.isfile(path):
-        return set()
+        return {}
     with open(path, encoding="utf-8") as fh:
         s = json.load(fh)
-    if not str(s.get("approved_by", "")).strip() or not str(s.get("reason", "")).strip():
-        return set()
-    return set(s.get("keys", []))
+    keys = s.get("keys")
+    if not str(s.get("approved_by", "")).strip() or not str(s.get("reason", "")).strip() or not isinstance(keys, dict):
+        return {}
+    return keys
 
 
 def check(p):
     try:
-        old, new = policy.load(p["old"]), policy.load(p["new"])
+        olds = [policy.load(x) for x in [p["old"]] + p.get("baselines", [])]
+        new = policy.load(p["new"])
     except ValueError as e:
         return [finding("unparseable", "policy cannot be parsed: %s" % e)], {}
-    signed = signed_keys(p.get("signoff"))
-    f = [finding("loosened", "%s loosened (%s) without a human sign-off" % (k, why), k)
-         for k, why in loosened(old, new) if k not in signed]
+    ok, f = signed(p.get("signoff")), []
+    for k, why in sorted({lw for old in olds for lw in loosened(old, new)}):
+        if k not in ok or ok[k] != new.get(k):
+            f.append(finding("loosened", "%s loosened (%s) without a human sign-off for that value" % (k, why), k))
     return f, {}
 
 

@@ -38,9 +38,19 @@ class Granularity(unittest.TestCase):
         s = dict(GOOD, untested="characterized")
         self.assertEqual(score(s)[1]["slices"][0]["score"], "amber")
 
-    def test_and_in_title_is_red(self):
-        rc, out, _ = score(dict(GOOD, title="Add discount and send email"))
-        self.assertEqual(rc, 1)
+    def test_and_in_title_is_amber(self):
+        rc, out, _ = score(dict(GOOD, title="Reject expired or revoked token"))
+        self.assertEqual(rc, 0)
+        self.assertEqual(out["slices"][0]["score"], "amber")
+        self.assertEqual(score(dict(GOOD, title="Add discount and send email", modules=2))[0], 1)
+
+    def test_characterization_slice_skips_size_limits(self):
+        s0 = dict(GOOD, id="S0", kind="characterization", lines=900, symbols=40, files=12, untested="unknown")
+        rc, out, log = score(s0, dict(GOOD, id="S1", untested="characterized"))
+        self.assertEqual(rc, 0, log)
+
+    def test_bool_is_not_a_number(self):
+        self.assertEqual(score(dict(GOOD, symbols=True))[0], 1)
 
     def test_not_testable_is_red(self):
         self.assertEqual(score(dict(GOOD, testable="no"))[0], 1)

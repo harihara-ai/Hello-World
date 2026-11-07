@@ -5,7 +5,7 @@ argument-hint: <module>
 
 purpose: Learn one module on first touch: write its card and a draft behaviour spec tagged inferred.
 
-Follow `CLAUDE.md` and `kit/core/rules.md`. Arguments: `$ARGUMENTS`.
+Follow `kit/core/rules.md`. Arguments: `$ARGUMENTS`.
 
 1. Read in order, through subagents: tests, public interfaces and contracts, linked ticket history, docs, then code.
 2. Write `docs/ai/modules/<module>.md`: purpose, entry points, key behaviours, data, contracts, quirks.

@@ -16,5 +16,9 @@ All under `openspec/changes/<name>/`:
 | `inputs/<gate>.json` | Input for one gate | The command that runs the gate |
 | `gates-ready.json`, `gates-done.json` | Last gate_check result | `gate_check.py` |
 
-`kit/scripts/state.sh` prints `{"branch", "ticket", "change", "change_exists", "next", "last_gate"}`.
+`kit/scripts/state.sh` prints `{"branch", "ticket", "change", "change_exists", "next", "last_gate", "bootstrapped"}`.
+
+`docs/ai/index.json` holds one entry per knowledge item (spec section 6):
+`{"id", "path", "kind", "purpose", "module", "module_paths": [globs], "confidence", "verified_sha", "depends_on", "est_tokens"}`.
+`/refresh` diffs each entry's `module_paths` since its `verified_sha`.
 The change name is the branch name after its last `/`; the ticket key is the first `ABC-123` in the branch.
