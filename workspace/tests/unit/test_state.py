@@ -37,7 +37,6 @@ class State(unittest.TestCase):
 
     def test_bootstrapped_when_index_and_policy_exist(self):
         write(self.d, "docs/ai/index.json", "[]")
-        write(self.d, "docs/ai/policy.yml", "version: 1\n")
         self.assertTrue(self.state(self.d)[1]["bootstrapped"])
 
     def test_change_with_status_and_gate(self):

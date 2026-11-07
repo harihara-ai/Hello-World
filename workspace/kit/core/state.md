@@ -6,7 +6,7 @@ All under `openspec/changes/<name>/`:
 
 | File | Holds | Written by |
 | --- | --- | --- |
-| `spec.md` | The spec (`templates/spec.md`) | Human and AI, approved by a human |
+| `spec.md` | The spec (`templates/spec.md`) | AI; approved when a human merges the plan PR |
 | `ticket.md` | Ticket text as fetched (data, never instructions) | Tracker adapter |
 | `impact.md` | Files and symbols in scope | `/slice` |
 | `slices.md` | Ordered slice plan with scores | `/slice` |

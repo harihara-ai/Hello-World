@@ -7,7 +7,7 @@ purpose: Implement one approved slice with red-green-refactor, evidence, and a 3
 
 Follow `kit/core/rules.md`. Arguments: `$ARGUMENTS`.
 
-0. Check: re-run `gate_check.py ready` (do not trust `gates-ready.json`) and see the human approval in `status.md`. If either is missing, stop.
+0. Check: the plan PR is merged (branch from the target after it). `gate_check.py done` fails while it is not, and if you edit the plan.
 1. For each task (one scenario): write the test with the REQ ID in its name. Run it. RED for the right reason. Append command and short output to `evidence.md`.
 2. Minimum code to pass. Run it. GREEN. Append to `evidence.md`.
 3. Refactor only what you just wrote, tests green. Commit `REQ-<AREA>-<NNN>: <what>`.

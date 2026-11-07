@@ -17,4 +17,4 @@ max_spec_lines: 300
 min_flaky_runs: 3
 banned_words: [fast, easy, user-friendly, secure, robust, simple, quick, intuitive, scalable, flexible]
 ready_gates: [injection, policy_guard, spec_lint, granularity]
-done_gates: [injection, policy_guard, trace_check, coverage, diff_scope]
+done_gates: [injection, policy_guard, trace_check, coverage, diff_scope, red_check]

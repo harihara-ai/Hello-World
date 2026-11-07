@@ -93,7 +93,7 @@ class SpecLint(unittest.TestCase):
 
 
     def test_none_with_punctuation_or_bullet(self):
-        text = CLEAN_SPEC.replace("Errors: none", "Errors: None.").replace("## Open questions\nnone", "## Open questions\n- None")
+        text = CLEAN_SPEC.replace("Errors: none", "- Errors: None.").replace("## Open questions\nnone", "## Open questions\n- None")
         rc, _, log = lint(text)
         self.assertEqual(rc, 0, log)
 

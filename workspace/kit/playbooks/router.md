@@ -9,11 +9,11 @@ purpose: maps tracker types and user intents to playbooks; the Genie reads this 
 | Story or Task labelled NFR | User Story (NFR) | `nfr` | `playbook.story` (NFR needs a measurable threshold) |
 | Epic | Epic, Feature | milestone | Decompose into stories, then `playbook.story` per child |
 | Bug | Bug | `bug` | `playbook.bug` |
-| Bug (high priority), Incident | Bug, Issue | `hotfix` | `playbook.bug` with fast-track G1 |
+| Bug (high priority), Incident | Bug, Issue | `hotfix` | `playbook.bug` (same gates; a one-slice plan) |
 | Task, Sub-task | Task | `chore` | `playbook.no_behaviour_change` |
 | Improvement | Task (tech) | `debt` | `playbook.no_behaviour_change` |
 | Spike | Task or Issue | `spike` | `playbook.spike` |
-| Task | Task | `docs` | Docs change: link check and human review only |
+| Task | Task | `docs` | Docs change: `Type: docs`; no production file may change |
 | (any) | (any) | `tests` | `playbook.safety_net` |
 
 Unknown type: ask one multiple-choice question with the playbooks above as choices. Record the answer in `status.md`.

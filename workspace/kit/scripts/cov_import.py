@@ -83,13 +83,39 @@ def parse_report(path):
 
 
 def match(repo_path, report_paths):
-    """Exact path first; else a unique suffix match (absolute paths, JaCoCo package paths). Ambiguous = None."""
+    """Exact path first; else the report path sharing the longest run of trailing segments (container roots,
+    JaCoCo package paths). A tie is ambiguous and returns None."""
     paths = list(report_paths)
     if repo_path in paths:
         return repo_path
-    hits = [p for p in paths if p.replace("\\", "/").endswith("/" + repo_path)
-            or repo_path.endswith("/" + p.replace("\\", "/").lstrip("/"))]
-    return hits[0] if len(hits) == 1 else None
+    want = repo_path.split("/")[::-1]
+
+    def common(p):
+        n = 0
+        for a, b in zip(p.replace("\\", "/").split("/")[::-1], want):
+            if a != b:
+                break
+            n += 1
+        return n
+    scored = sorted(((common(p), p) for p in paths), reverse=True)
+    if not scored or scored[0][0] == 0 or (len(scored) > 1 and scored[1][0] == scored[0][0]):
+        return None
+    return scored[0][1]
+
+
+def parse_reports(paths):
+    """Merge several reports (multi-module builds). The total is recomputed from lines when there is more than one."""
+    if len(paths) == 1:
+        return parse_report(paths[0])
+    r = {"covered": {}, "instrumented": {}, "total": None}
+    for p in paths:
+        one = parse_report(p)
+        for k in ("covered", "instrumented"):
+            for f, lines in one[k].items():
+                r[k].setdefault(f, set()).update(lines)
+    n = sum(len(v) for v in r["instrumented"].values())
+    r["total"] = round(100.0 * sum(len(v) for v in r["covered"].values()) / n, 2) if n else 100.0
+    return r
 
 
 def parse_diff(text):

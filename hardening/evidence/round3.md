@@ -19,3 +19,7 @@ Runner unit tests read workspace/: their GREEN is recorded after the pin. A dedi
 
 ## Rebuild on scratch lock
 70 files tangled identical to dev tree; kit_lint 'OK: 49 components clean'.
+
+## Pin and GREEN on workspace (human-approved)
+PINNED 70 files. added=4 changed=24 removed=0 (15 high-risk approved). selftest: lock check OK, forge 25 OK, unit 157 OK, contract 5 OK, mutation 14 OK. Runner unit tests OK. run_traps 20/20, false alarms 0.
+Kit size: phase 2 pin 710 lines py/sh, 555 lines md/yml, 44 files; now 1044, 596, 47.

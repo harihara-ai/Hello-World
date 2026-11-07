@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """purpose: changed-line coverage at or above the threshold, and overall coverage not dropping beyond tolerance.
 
-In git: {"report": coverage report path, "base": git ref, "baseline_total": pct, "policy": {...}}. The gate
-reads the report and git diff itself; no production code changed means nothing to check. A report older than
-the changed code fails. Outside git only (fixtures): {changed_lines, covered_lines, baseline_total, current_total}.
+In git: {"reports": [paths], "baseline_total": pct or "baseline_report": path, "base": ref}. gate_check fills
+these from its CI flags only, never from the change folder. The gate reads the reports and git diff itself; no
+production code changed means nothing to check; added coverage-ignore markers fail. Outside git only
+(fixtures): {changed_lines, covered_lines, baseline_total, current_total}.
 """
 import subprocess
 import os
@@ -12,7 +13,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
 from gateio import UsageError, finding, run  # noqa: E402
 import cov_import  # noqa: E402
-from kitconst import CODE_EXT, is_test_file  # noqa: E402
+from kitconst import CODE_EXT, COVERAGE_IGNORE, is_test_file  # noqa: E402
 
 
 def in_git():
@@ -27,18 +28,32 @@ def from_git(p):
             if not is_test_file(f) and f.lower().endswith(CODE_EXT)}
     if not code:
         return [finding("nothing_to_check", "no production code changed", "", "warn")], None
-    if "report" not in p or "baseline_total" not in p:
-        return [finding("report_required", "code changed: give a coverage report and baseline_total")], None
-    newest = max((os.path.getmtime(f) for f in code if os.path.exists(f)), default=0)
-    if os.path.getmtime(p["report"]) < newest:
-        return [finding("stale_report", "the coverage report is older than the changed code; re-run the tests")], None
-    rep, f, changed, covered = cov_import.parse_report(p["report"]), [], {}, {}
+    reports = p.get("reports") or []
+    if not reports or ("baseline_total" not in p and "baseline_report" not in p):
+        return [finding("report_required", "code changed: CI must pass --coverage-report and a baseline")], None
+    f = []
+    for path, lines in code.items():
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            text = fh.read().lower().splitlines()
+        for n in sorted(lines):
+            if n <= len(text) and any(m in text[n - 1] for m in COVERAGE_IGNORE):
+                f.append(finding("coverage_exclusion_added", "added line %d hides code from coverage" % n, path))
+    newest = max((os.path.getmtime(x) for x in code if os.path.exists(x)), default=0)
+    if any(os.path.getmtime(r) < newest for r in reports):
+        return f + [finding("stale_report", "a coverage report is older than the changed code; re-run the tests")], None
+    rep, changed, covered = cov_import.parse_reports(reports), {}, {}
+    measured = {os.path.splitext(k)[1].lower() for k in rep["instrumented"]}
     for path, lines in code.items():
         key = cov_import.match(path, rep["instrumented"])
+        if not key and os.path.splitext(path)[1].lower() not in measured:
+            f.append(finding("not_measured", "the report does not measure %s files: %s" % (os.path.splitext(path)[1], path), path, "warn"))
+            continue
         if not key:
             f.append(finding("unmatched_file", "%s is not in the report; counted as uncovered" % path, path, "warn"))
         changed[path] = sorted(lines & rep["instrumented"][key]) if key else sorted(lines)
         covered[path] = sorted(rep["covered"].get(key, set())) if key else []
+    if "baseline_report" in p:
+        p["baseline_total"] = cov_import.parse_report(p["baseline_report"])["total"]
     return f, (changed, covered, rep["total"])
 
 

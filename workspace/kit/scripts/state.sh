@@ -13,7 +13,7 @@ branch, ticket, change, root = sys.argv[1:5]
 d = os.path.join(root, "openspec", "changes", change) if change else ""
 state = {"branch": branch or None, "ticket": ticket or None, "change": change or None,
          "change_exists": bool(d) and os.path.isdir(d), "next": None, "last_gate": None,
-         "bootstrapped": all(os.path.isfile(os.path.join(root, "docs", "ai", f)) for f in ("index.json", "policy.yml"))}
+         "bootstrapped": os.path.isfile(os.path.join(root, "docs", "ai", "index.json"))}
 status = os.path.join(d, "status.md")
 if state["change_exists"] and os.path.isfile(status):
     for line in open(status, encoding="utf-8"):

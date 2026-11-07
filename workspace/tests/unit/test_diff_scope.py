@@ -95,5 +95,26 @@ class GitMode(unittest.TestCase):
             self.assertIn("scan_too_broad", rules(out), scan)
 
 
+    def test_star_dot_star_is_too_broad(self):
+        rc, out, _ = scope(["src/a.py"], ["*.*"])
+        self.assertIn("scan_too_broad", rules(out))
+
+    def test_production_names_with_test_inside_are_production(self):
+        rc, out, _ = scope(["src/Contest.php", "src/Attest.java"], ["src/*"], no_production=True)
+        self.assertEqual(rc, 1)
+        rc, _, log = scope(["src/FeeTest.php", "Shop/DiscountTests.cs"], ["src/*", "Shop/*"], no_production=True)
+        self.assertEqual(rc, 0, log)
+
+    def test_coverage_config_is_protected(self):
+        for p in (".coveragerc", "phpunit.xml", "phpunit.xml.dist", "tests/x.runsettings", ".nycrc.json", "jest.config.js"):
+            rc, out, _ = scope([p], ["*.*", "*/*"])
+            self.assertIn("protected_path", rules(out), p)
+
+    def test_changed_plan_files_fail(self):
+        ch = "openspec/changes/X-1"
+        rc, out, _ = scope([ch + "/spec.md", "src/a.py"], ["src/a.py"], change_dir=ch, plan_files=[ch + "/spec.md"])
+        self.assertIn("plan_changed", rules(out))
+
+
 if __name__ == "__main__":
     unittest.main()

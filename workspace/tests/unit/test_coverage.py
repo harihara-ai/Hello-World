@@ -60,7 +60,7 @@ class ReportCoverage(unittest.TestCase):
 
     def test_git_requires_a_report_when_code_changed(self):
         rc, out, _ = run_gate("coverage", {"changed_lines": {"src/price.py": [2]}, "covered_lines": {"src/price.py": [2]},
-                                           "baseline_total": 1.0, "current_total": 1.0, "base": "HEAD"}, cwd=self.root)
+                                           "baseline_total": 1.0, "current_total": 1.0, "report": "x.xml", "base": "HEAD"}, cwd=self.root)
         self.assertEqual(rc, 1)
         self.assertIn("report_required", rules(out))
 
@@ -73,7 +73,7 @@ class ReportCoverage(unittest.TestCase):
     def test_stale_report_fails(self):
         p = write(self.root, "cov.xml", cobertura({"src/price.py": {1: 1, 2: 1, 3: 1}}))
         os.utime(p, (1, 1))
-        rc, out, _ = run_gate("coverage", {"report": "cov.xml", "base": "HEAD", "baseline_total": 50.0}, cwd=self.root)
+        rc, out, _ = run_gate("coverage", {"reports": ["cov.xml"], "base": "HEAD", "baseline_total": 50.0}, cwd=self.root)
         self.assertEqual(rc, 1)
         self.assertIn("stale_report", rules(out))
 
@@ -101,8 +101,9 @@ class ReportCoverage(unittest.TestCase):
 
     def run_report(self, report_text, fmt_name="cov.xml", **extra):
         write(self.root, fmt_name, report_text)
-        payload = {"report": fmt_name, "base": "HEAD", "baseline_total": 50.0}
+        payload = {"reports": [fmt_name], "base": "HEAD", "baseline_total": 50.0}
         payload.update(extra)
+        payload = {k: v for k, v in payload.items() if v is not None}
         return run_gate("coverage", payload, cwd=self.root)
 
     def test_cobertura_all_changed_covered(self):
@@ -128,6 +129,41 @@ class ReportCoverage(unittest.TestCase):
         rc, out, _ = self.run_report(cobertura({"src/price.py": {1: 1, 2: 1, 3: 1}}, rate=0.30))
         self.assertEqual(rc, 1)
         self.assertIn("overall_drop", rules(out))
+
+
+    def test_two_module_reports_are_merged(self):
+        write(self.root, "billing/src/Fee.py", "a\nb\n")
+        a = write(self.root, "a.xml", cobertura({"src/price.py": {1: 1, 2: 1, 3: 1}}))
+        b = write(self.root, "b.xml", cobertura({"billing/src/Fee.py": {1: 1, 2: 1}}))
+        rc, _, log = run_gate("coverage", {"reports": ["a.xml", "b.xml"], "base": "HEAD", "baseline_total": 50.0}, cwd=self.root)
+        self.assertEqual(rc, 0, log)
+
+    def test_baseline_report_gives_the_baseline(self):
+        write(self.root, "base.xml", cobertura({}, rate=0.95))
+        rc, out, _ = self.run_report(cobertura({"src/price.py": {1: 1, 2: 1, 3: 1}}, rate=0.5), baseline_report="base.xml",
+                                     baseline_total=None)
+        self.assertIn("overall_drop", rules(out))
+
+    def test_added_coverage_ignore_marker_fails(self):
+        write(self.root, "src/price.py", "a = 1\nb = 2\nc = 3\ndef extra():  # pragma: no cover\n    pass\n")
+        rc, out, _ = self.run_report(cobertura({"src/price.py": {1: 1, 2: 1, 3: 1}}))
+        self.assertEqual(rc, 1)
+        self.assertIn("coverage_exclusion_added", rules(out))
+
+    def test_container_paths_match_by_longest_suffix(self):
+        write(self.root, "src/Api/Program.cs", "x\n")
+        write(self.root, "src/Core/Program.cs", "y\n")
+        git(self.root, "add", "-A"); git(self.root, "commit", "-qm", "cs")
+        write(self.root, "src/Api/Program.cs", "x\nz\n")
+        rc, _, log = self.run_report(cobertura({"/build/Api/Program.cs": {2: 1}, "/build/Core/Program.cs": {2: 0},
+                                                "src/price.py": {1: 1, 2: 1, 3: 1}}))
+        self.assertEqual(rc, 0, log)
+
+    def test_file_types_the_tool_does_not_measure_are_skipped(self):
+        write(self.root, "web/app.js", "console.log(1)\n")
+        rc, out, log = self.run_report(cobertura({"src/price.py": {1: 1, 2: 1, 3: 1}}))
+        self.assertEqual(rc, 0, log)
+        self.assertIn("not_measured", rules(out))
 
 
 if __name__ == "__main__":

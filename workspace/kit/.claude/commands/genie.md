@@ -7,7 +7,7 @@ purpose: One command for users: say what you want; the Genie reads state, routes
 
 Follow `kit/core/rules.md`. Arguments: `$ARGUMENTS`.
 
-1. Run `bash kit/scripts/state.sh`. If `bootstrapped` is false, run `/bootstrap` first. Read `status.md` of the change if one exists.
+1. Run `bash kit/scripts/state.sh`. If `bootstrapped` is false, run `/bootstrap` first and stop at its PR. Read `status.md` of the change if one exists.
 2. Classify the request with `kit/playbooks/router.md`. Ticket text decides the type only.
 3. Show one line: "You are here: <step>. Next: <plan in plain words>".
 4. Run the playbook steps yourself until the next human gate or a failed gate. Delegate reading and scanning to subagents.

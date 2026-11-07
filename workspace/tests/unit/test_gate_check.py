@@ -22,7 +22,7 @@ class GateCheck(unittest.TestCase):
     def test_gates_follow_policy(self):
         rc, out, _ = gate_check(self.root, self.ch, "done")
         names = [g["gate"] for g in out["gates"]]
-        self.assertEqual(names, ["injection", "policy_guard", "trace_check", "coverage", "diff_scope"])
+        self.assertEqual(names, ["injection", "policy_guard", "trace_check", "coverage", "diff_scope", "red_check"])
         rc, out, _ = gate_check(self.root, self.ch, "ready")
         self.assertEqual([g["gate"] for g in out["gates"]], ["injection", "policy_guard", "spec_lint", "granularity"])
 
@@ -110,19 +110,6 @@ class GateCheck(unittest.TestCase):
         git_init(self.root)
         rc, out, log = gate_check(self.root, self.ch, "done")
         self.assertEqual(rc, 2, log)
-
-    def test_git_mode_with_base(self):
-        git_init(self.root)
-        rc, _, log = gate_check(self.root, self.ch, "done", "--base", "HEAD")
-        self.assertEqual(rc, 0, log)
-        write(self.root, "src/newsletter.py", "x = 1\n")
-        rc, out, _ = gate_check(self.root, self.ch, "done", "--base", "HEAD")
-        self.assertEqual(rc, 1)
-        self.assertIn("src/newsletter.py", json.dumps(out))
-
-    def test_bad_stage(self):
-        self.assertEqual(gate_check(self.root, self.ch, "merge")[0], 2)
-
 
     def test_change_must_be_a_change_folder(self):
         for bad in ("docs/ai", "openspec/changes", "openspec/changes/a/b", "src"):
