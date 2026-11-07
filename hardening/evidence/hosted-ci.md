@@ -95,3 +95,18 @@ No script changed (no new test: prose only; RED/GREEN are the hosted runs above)
 PINNED (owner "approved"): changed=1 (`kit/INSTALL.md`, high-risk), kit.lock sha256 bbbe4d24... After the pin: tangle 70;
 lint 49 clean; selftest lock match, forge 30, unit 170, contract 5, mutation 14 OK; run_traps (1 run) 22/22, critical
 17/17, other 5/5, false alarms 0. Package rebuilt as 1.0.3 (`package.md`).
+
+## Session B2: N01 fix (a), PRs from the AI's own account (2026-11-07)
+`get_me`: `harihara-ai-bot` (id 353750257, Write collaborator). Not a code owner (CODEOWNERS names only `@harihara-ai`).
+| PR | Case | Author | Read | Result |
+| --- | --- | --- | --- | --- |
+| #17 | w1 again: replaces trial-main's gate job with `echo gate skipped`, adds `src/extra.py` | harihara-ai-bot | `GET pulls/17` 1 s after opening | `requested_reviewers: [harihara-ai]` (code owner auto-requested), mergeable_state `blocked`; run 42378971835: `tests` in progress, `baseline` skipped |
+Unlike #11 (author = sole code owner: no review requested, `clean`), a non-owner author gets code-owner review.
+Owner (phone): merged clean PR #3 (reported by the owner; merge commit and baseline run not read: see below).
+Owner (phone): trial-main ruleset now blocks force pushes; new master ruleset (restrict deletions, block force
+pushes, PR with 1 approval, repository admin bypass for PRs only). Reported by the owner; rulesets API not read.
+Access lost after #17: GitHub MCP "sign in again", `git fetch` 403, unauthenticated `api.github.com` returns
+"Sorry. Your account was suspended" (the proxy's credential, so likely the bot account; not confirmed).
+Not run: #17's final `gate` result (expected failure from master's copy: protected_path, outside_scan); review
+requirement isolated from a failing gate (needs passing checks on a code-owned path); #3 merge commit and its baseline
+run; ruleset reads; owner approving a bot PR; a bot PR to master under the new master ruleset.
