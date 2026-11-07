@@ -177,9 +177,9 @@ Hardening stopped at the round cap (6) with the items below open. Stop rule (2 c
 
 | id | round | severity | location | problem | decision | reason | status |
 |---|---|---|---|---|---|---|---|
-| L01 | 6 | blocker | diff_scope | non-code files in the change folder still run (pytest collects test*.txt doctests) (R2-6-01) | accept | allowlist in kitconst.CHANGE_FOLDER_FILES; test bed case 21 | fixed after cap, pending pin (not swarm-reviewed) |
-| L02 | 6 | blocker | INSTALL CI recipe | the PR's tests run after the approved worktree exists and can rewrite the approved kit (R2-6-02) | accept | INSTALL: tests run first, worktree created after them, set -e | fixed after cap, pending pin (not swarm-reviewed) |
-| L03 | 6 | blocker | INSTALL | coverage.py's .coverage data file lands in the checkout and fails diff_scope on every PR (R5-6-01) | accept | COVERAGE_FILE outside the checkout; .coverage in .gitignore | fixed after cap, pending pin (not swarm-reviewed) |
-| L04 | 6 | major | playbooks/spike.md | spike mixes spec and findings in one PR; fails CI (R1-6-01) | accept | docs-only findings PR route | fixed after cap, pending pin (not swarm-reviewed) |
+| L01 | 6 | blocker | diff_scope | non-code files in the change folder still run (pytest collects test*.txt doctests) (R2-6-01) | accept | allowlist in kitconst.CHANGE_FOLDER_FILES; test bed case 21 | fixed after cap, pinned (not swarm-reviewed) |
+| L02 | 6 | blocker | INSTALL CI recipe | the PR's tests run after the approved worktree exists and can rewrite the approved kit (R2-6-02) | accept | INSTALL: tests run first, worktree created after them, set -e | fixed after cap, pinned (not swarm-reviewed) |
+| L03 | 6 | blocker | INSTALL | coverage.py's .coverage data file lands in the checkout and fails diff_scope on every PR (R5-6-01) | accept | COVERAGE_FILE outside the checkout; .coverage in .gitignore | fixed after cap, pinned (not swarm-reviewed) |
+| L04 | 6 | major | playbooks/spike.md | spike mixes spec and findings in one PR; fails CI (R1-6-01) | accept | docs-only findings PR route | fixed after cap, pinned (not swarm-reviewed) |
 | L05 | 6 | blocker | red_check, coverage | tests that run new code but assert nothing pass (R5-6-02) | limit | same root cause as accepted limit J04 | closed (limit J04) |
 | L06 | 6 | minor | INSTALL, trace_check | test step result not enforced by the gate; flaky baseline; orphan_id warnings pile up; Delphi {tests} example; untracked helpers removed during base run (R1 N1-N3, R3-6-01..03, R4 minors, R5-6-03) | open | wording and small fixes | open (cap) |

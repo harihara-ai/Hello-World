@@ -11,7 +11,7 @@ import re
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
 from gateio import UsageError, finding, run  # noqa: E402
-from kitconst import CODE_EXT, PROTECTED, is_production, is_test_file, matches  # noqa: E402
+from kitconst import CHANGE_FOLDER_FILES, PROTECTED, is_production, matches  # noqa: E402
 
 
 def in_git():
@@ -52,8 +52,8 @@ def check(p):
     changed = [c for c in changed if c not in pyc]  # untracked bytecode is the test step's own output
     f += [finding("protected_path", "a human changes this file in its own PR: %s" % c, c) for c in changed if matches(c, PROTECTED)]
     if ch:
-        f += [finding("code_in_change_folder", "a change folder holds the plan and evidence, not code: %s" % c, c)
-              for c in changed if c.startswith(ch + "/") and (c.lower().endswith(CODE_EXT) or is_test_file(c.rsplit("/", 1)[-1]))]
+        f += [finding("code_in_change_folder", "a change folder holds only the plan and evidence: %s" % c, c)
+              for c in changed if c.startswith(ch + "/") and not matches(c[len(ch) + 1:], CHANGE_FOLDER_FILES)]
     changed = [c for c in changed if not (ch and c.startswith(ch + "/"))]
     scan = p.get("impact_scan", [])
     if not scan:
