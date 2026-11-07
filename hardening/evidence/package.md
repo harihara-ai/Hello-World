@@ -22,3 +22,8 @@ purpose: phase 6 package build and its verification (2026-11-07).
   this file without this section).
 - The built install zip, unzipped into a fresh synthetic repo: root CLAUDE.md kept; plan PR ready pass, exit 0; clean
   code PR done pass, exit 0; out-of-scope control exit 1 (two-job recipe simulated, `install-zip.md`).
+
+## Rebuild 1.0.3 (2026-11-07, after N01)
+- Built: `bash forge/forge.sh package` -> dist/northstar-kit.zip, 164585 bytes, 167 entries, sha256 1dbf3bdd...;
+  dist/northstar-kit-install.zip, 57055 bytes, 58 entries, sha256 2ff6b3e8... (INSTALL holds the N01 lines).
+- Not run: unzip of 1.0.3 into trial-main (it runs 1.0.2; only INSTALL prose differs).

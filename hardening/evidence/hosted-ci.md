@@ -92,3 +92,6 @@ a ruleset on master; fix (a); pull_request_target cache or token abuse by PR tes
 Kit source: `proposal/modules/01-core.md` (core.install), INSTALL 61 to 66 lines (cap 300). Scratch pin: `PINNED 70 files.
 added=0 changed=1 removed=0`, `kit/INSTALL.md HIGH-RISK`, lock `cbd77c98...` to `bbbe4d24...`; lint 49 clean; forge tests OK.
 No script changed (no new test: prose only; RED/GREEN are the hosted runs above). Not pinned: awaiting the owner.
+PINNED (owner "approved"): changed=1 (`kit/INSTALL.md`, high-risk), kit.lock sha256 bbbe4d24... After the pin: tangle 70;
+lint 49 clean; selftest lock match, forge 30, unit 170, contract 5, mutation 14 OK; run_traps (1 run) 22/22, critical
+17/17, other 5/5, false alarms 0. Package rebuilt as 1.0.3 (`package.md`).

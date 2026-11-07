@@ -15,6 +15,8 @@ Put every pattern in `PROTECTED` in `kit/scripts/kitconst.py` into `CODEOWNERS`.
 `gate.diff_scope` refuses in an AI change; CODEOWNERS stops the same change arriving another way.
 Also list the build files that can hold coverage or test settings: `pyproject.toml`, `setup.cfg`, `tox.ini`, `pom.xml`,
 `build.gradle*`, `package.json`, `*.csproj`. They are not in `PROTECTED` (a change may need them), so a human reviews each change.
+Require code-owner review on the target branch. The AI opens PRs from its own account, never a code owner's: the
+host does not ask a code owner to review their own PR, so a CI or kit edit would merge unreviewed.
 
 ## Two PRs per change
 1. Plan PR: `spec.md`, `slices.md`, `inputs/diff_scope.json`, `inputs/granularity.json`, never `evidence.md` (it marks
@@ -25,7 +27,10 @@ Also list the build files that can hold coverage or test settings: `pyproject.to
 
 ## CI is the gate that counts
 Local runs are early feedback: the agent controls its own working copy. CI has two jobs, so PR code never runs
-before the gates (a test can plant a git hook or git config that rewrites the kit on the same runner):
+before the gates (a test can plant a git hook or git config that rewrites the kit on the same runner). Both jobs
+are defined by a protected branch, never the PR: a PR that edits the CI file could otherwise fake both checks (GitHub:
+`pull_request_target`, which runs the file on the default branch; read-only token, no secrets, no cache restore;
+check out the PR head without credentials).
 1. **tests**: run the PR's tests with coverage; the step must pass. Keep the report as an artifact.
 2. **gate**, after tests, on a fresh runner (hosted runners are; a self-hosted one must be ephemeral). It runs the
    approved kit from the target branch in its own worktree and no PR code before `gate_check.py`: install test tools

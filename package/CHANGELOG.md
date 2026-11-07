@@ -2,6 +2,13 @@
 
 purpose: what changed in the North Star kit, by phase and hardening round.
 
+## 1.0.3-silver-synthetic (2026-11-07)
+- **N01 (hosted CI trial, session B):** a PR could edit the GitHub workflow and fake the required `gate` check; code-owner
+  review is not asked when the PR author is the code owner. INSTALL: CI jobs come from a protected branch (GitHub:
+  `pull_request_target`, default branch, read-only), and the AI opens PRs from its own account.
+- **Re-check:** hosted runs on trial-main (`hardening/evidence/hosted-ci.md`); forge 30, unit 170, contract 5,
+  mutation 14 OK; run_traps (1 run) 22/22, 0 false alarms.
+
 ## 1.0.2-silver-synthetic (2026-11-07)
 - **G24 (fix plan item 5):** `forge.sh package` also builds `dist/northstar-kit-install.zip` with repo-root paths
   (`kit/`, `kit.manifest.yml`, `.claude/commands/`; no root `CLAUDE.md`). INSTALL Files: 5 steps to 3.

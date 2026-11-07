@@ -9,7 +9,8 @@ purpose: where the North Star kit stands, the resume prompt for a new session, a
   Items 3, 1c (M02, coverage forging), 4 and 5 (install zip) pinned. Package rebuilt as 1.0.2 (`hardening/evidence/package.md`).
 - Spec `proposal/north-star-v2.md` synced with the kit.
 - Session B (hosted CI trial) ran on `trial-main`: PRs #1-#11, `hardening/evidence/hosted-ci.md`. New blocker N01
-  (a PR edits the workflow to fake the `gate` check; mergeable when the author is the only code owner). Awaits the owner.
+  (a PR edits the workflow to fake the `gate` check; mergeable when the author is the only code owner). Fix (b) run
+  (CI from master via pull_request_target; w1b, w2 blocked) and pinned; package 1.0.3. Fix (a) (AI's own account) open.
 - Branch `ccr-25d09baa-rmhk7r`. State: `hardening/state.md`. Ledger: `hardening/findings.md`. Pack: `hardening/evidence/EVIDENCE.md`.
 
 ## Resume prompt (paste into a new Claude Code session in this repo)
@@ -58,8 +59,10 @@ Pre-pilot items done (1, 1b, 1c, 3, 4, 5). Do 2 while setting the pilot up. Leav
 ## Not run (open register; close an item only with a run and its evidence)
 | Item | Risk if wrong | When |
 | --- | --- | --- |
-| CI recipe on a hosted CI: run on GitHub Actions (`evidence/hosted-ci.md`); two jobs, artifacts, baseline, ruleset hold for plan, clean, t2-t4, d1, f1, failing tests; **open: N01** (w1 mergeable) | a PR fakes the required gate check | fix N01, re-run w1; blocks Gold |
-| w1 with a PR author who is not a code owner; a PR adding a second workflow that emits a `gate` check | N01 fix unproven | with the N01 fix |
+| CI recipe on a hosted CI: run on GitHub Actions (`evidence/hosted-ci.md`); holds for plan, clean, t2-t4, d1, f1, failing tests, w1b, w2 | - | closed for GitHub-hosted Python; other hosts and stacks per pilot |
+| N01 (a): PRs from the AI's own account, so code-owner review applies; w1 with a non-owner author | a workflow or kit edit merges unreviewed | needs a second GitHub account; before the pilot |
+| No ruleset on master, where the trial CI file now lives (any push changes the CI) | CI rewritten outside review | owner adds a master ruleset with fix (a) |
+| pull_request_target: PR tests run with a read-only token; cache or token abuse not tried | base-branch cache poisoning | pilot setup |
 | Block force pushes on the trial ruleset; merge of clean code PR #3 and the next baseline | baseline chain untested past one merge | next B session |
 | Self-hosted runner reuse between jobs | M01 returns on a persistent runner | pilot setup, if a pilot repo uses one |
 | Test tools installed "as ../approved declares them" (npm, Maven, Composer) | PR install scripts run before the gate | pilot setup, per stack |
