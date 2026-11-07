@@ -150,3 +150,18 @@ Tokens and minutes per slice: not measured. Escapes after merge: none known yet 
   and gate pass on both. No `.feature` file changed, so P01's case was not exercised (1.0.4 passes this upgrade too).
 - Owner merged koa#9 and commons-lang#10. `/refresh` (hand-run): koa#10 (5 entries re-verified), commons-lang#11 (3);
   no metrics.csv committed, so no threshold suggestion.
+
+## Fix plan item 2: diff-scoped mutation testing (report only, no new gate)
+- koa#11: `mutation` job (after tests, read-only, continue-on-error, not required) runs
+  `.github/northstar/mutation.sh` from `../approved`: Stryker 9.6.1, command runner `node --test`, `--mutate` = the
+  PR's changed `lib/` line ranges; score and survivors to the job summary.
+  Local: KOA-1 100% (7/7, 24 s); KOA-1 with both error tests removed 71.4% (5/7, survivors response.js:286);
+  KOA-2 100% (8/8); KOA-3 100% (8/8); no lib change: "nothing to mutate".
+- commons-lang#12: same job with PIT 1.30.2 + pitest-junit5-plugin 1.2.3 (tools from their own POM, pom.xml
+  unchanged; `--includeLaunchClasspath=false`, project classes first), targets the changed classes and their `*Test`
+  classes, scores only mutants on changed lines. Local: CL-1 100% (6/6); CL-1 with 2 of 3 tests removed 83.3% (5/6,
+  "replaced boolean return with true" survived, CharUtils.java:207); CL-2 100% (2/2); CL-3 100% (4/4); 7-9 s each.
+  Pitfalls met: relative `--classPath` entries found no tests; dropping commons-text broke the XML report.
+- Not run: either job on GitHub (they start on the first PR after each merge); PHP and .NET stacks (Infection,
+  Stryker.NET); a mutation score target (set from pilot data).
+- commons-lang#9 (CL-3 code) still open: owner to merge.
