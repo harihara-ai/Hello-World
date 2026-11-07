@@ -41,5 +41,23 @@ problem: a c8 config file can exclude files from coverage without a code-owner r
 proposed_fix: add `.c8rc*` to PROTECTED (next to .nycrc*) and `package-lock.json` to the INSTALL build files list
 ```
 
+```
+id: P03
+severity: minor
+location: kit/.claude/commands/implement.md step 4; gate diff_scope (change folder rule)
+evidence: KOA-1 code branch, local gate_check done: diff_scope fail "a change folder holds only the plan and
+  evidence: openspec/changes/KOA-1-response-json/metrics.csv"; status.md passed
+problem: /implement tells the agent to append metrics.csv, which the done gate then refuses
+proposed_fix: one of: allow metrics.csv in the change folder, or have /implement keep metrics outside the PR
+  (pilot keeps them in this file for now)
+```
+
+## koa slices
+| Ticket | Type | Plan PR | ready (CI) | Code PR | done | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| KOA-1 response.json / ctx.json | story | koa#3 | pass | - | local pass (6 gates) | first ready run: granularity split (5 scenarios, 2 modules); split by requirement; 1 attempt per slice |
+
+Metrics (KOA-1): S1 est 35, actual 48 lines, 2 files, 1 attempt; S2 est 20, actual 24, 2 files, 1 attempt.
+
 ## Not run
 - CI on koa (Actions on the fork must be enabled by the owner); baseline; rulesets; slices; commons-lang install.
