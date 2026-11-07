@@ -91,4 +91,9 @@ T7 (pilot) has not run, so Gold is not reached, and the open risks above apply.
 
 ## Human sign-off
 
-Signed: ____________________   Date: ____________   Decision (accept / reject / accept with conditions): ____________
+Signed: repo owner (approved in the Claude Code session)   Date: 2026-11-07   Decision: **accept with conditions**
+
+Conditions (as proposed in the session; the owner may edit them here):
+1. The label is "Silver on the synthetic test bed". It is not cleared for production use until a pilot (T7) on two real
+   repos passes, with the CI recipe on a real CI, real coverage tools and branch protection.
+2. The open risks above travel with the package.

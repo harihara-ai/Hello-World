@@ -56,7 +56,8 @@ stage_package() {
 import os, zipfile
 out = "dist/northstar-kit.zip"
 with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
-    for base in ("workspace", "hardening/evidence", "hardening/findings.md"):
+    for base in ("workspace", "forge", "hardening/evidence", "hardening/findings.md", "hardening/testbed",
+                 "hardening/roles", "hardening/findings.schema.md", "hardening/runners"):
         if os.path.isfile(base):
             z.write(base)
         elif os.path.isdir(base):
@@ -65,9 +66,10 @@ with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
                 for f in files:
                     p = os.path.join(root, f)
                     z.write(p)
-    for f in ("kit.lock", "README.md"):
-        if os.path.isfile(f):
-            z.write(f)
+    for f in ("kit.lock",):
+        z.write(f)
+    for f in ("README.md", "CHANGELOG.md"):
+        z.write(os.path.join("package", f), f)
 print("built", out)
 PY
 }

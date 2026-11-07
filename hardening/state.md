@@ -1,7 +1,7 @@
 purpose: loop state read at the start of every round.
 
 round: 6 (frozen at f571848; final verification, round cap)
-phase: 5 (certify: evidence pack written, Silver on synthetic test bed; awaiting human sign-off)
+phase: 6 (packaged: dist/northstar-kit.zip; Silver on synthetic test bed, accepted with conditions)
 certification_target: Silver
 round_cap: 6
 trap_score: 21/21 cases (critical 16/16, other 5/5, false alarms 0) on pinned workspace
