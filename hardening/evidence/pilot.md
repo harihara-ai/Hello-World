@@ -57,8 +57,8 @@ proposed_fix: one of: allow metrics.csv in the change folder, or have /implement
 | --- | --- | --- | --- | --- | --- | --- |
 | KOA-1 response.json / ctx.json | story | koa#3 (merged `8024d94`) | pass | koa#4 | CI pass: stage done, 6 gates, changed-line coverage 100%, red_check exit_base 1 (job 128436292711) | first ready run: granularity split (5 scenarios, 2 modules); split by requirement; 1 attempt per slice |
 | KOA-2 HEAD Content-Length 2 for web stream bodies | bug (found in the hunt) | koa#5 (merged `d4a3968`) | CI pass | koa#6 | CI pass: done, 6 gates, changed-line coverage 100%, red_check exit_base 1 (job 128438025988) | first code run broke `respond.test.js`, which asserted the buggy length; owner widened plan #5 (unmerged) to that assertion |
-
 | KOA-3 refactor lib/only.js | refactor | koa#7 (merged `3553675`) | CI pass | koa#8 | CI pass (job 128439471377); red_check n/a for refactor | S0 CHAR tests passed on old code; first draft pinned a wrong getter assumption (read once; really twice), dropped and spec corrected before merge; only.js 9 to 3 lines, branches 5 to 4 |
+
 Owner review: koa#4 plus koa#2 took 5 min (owner). koa#6 took 4 min (owner).
 Metrics (KOA-1): S1 est 35, actual 48 lines, 2 files, 1 attempt; S2 est 20, actual 24, 2 files, 1 attempt.
 
