@@ -117,7 +117,8 @@ def main():
             ap.error("--change auto needs git")
         found = sorted({m.group(0) for p in changed_paths(base) for m in [CHANGE.match(p)] if m and p != m.group(0)})
         if len(found) != 1:
-            other = [p for p in changed_paths(base) if is_test_file(p) or not matches(p, PROTECTED + DOCS)]
+            other = [p for p in changed_paths(base)  # protected files (a kit upgrade) are human-owned, tests included
+                     if not matches(p, PROTECTED) and (is_test_file(p) or not matches(p, DOCS))]
             ok = not found and not other
             why = ("no change folder: only docs or human-owned files changed" if ok else
                    "one PR holds exactly one change folder; found %s" % (found or "none") +

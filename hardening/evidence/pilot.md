@@ -140,3 +140,6 @@ Tokens and minutes per slice: not measured. Escapes after merge: none known yet 
   run_traps 22/22, critical 17/17, other 5/5, false alarms 0. Scratch pin: changed=6 (`kit/INSTALL.md`,
   `kit/scripts/gate_check.py`, `kit/scripts/kitconst.py` HIGH-RISK; `kit/playbooks/bug.md`; 2 test files).
 - Not run: the fixes on the pilot repos (they run kit 1.0.4 until upgraded).
+- PINNED (owner "yes"): changed=6 (3 HIGH-RISK). After the pin: tangle 70; lint 49 clean; selftest lock match,
+  forge 30, unit 171, contract 5, mutation 14 OK; run_traps 22/22, false alarms 0. Package 1.0.5 (`package.md`).
+  Friction: lint and selftest refuse while `__pycache__/` from a run_traps run sits in `workspace/` (removed by hand).

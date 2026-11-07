@@ -54,7 +54,8 @@ with no change folder passes only if it touches docs or human-owned files. Keep 
 artifact; the target's latest is the next baseline, so the base is never re-tested. `{tests}` in the test command
 is replaced by the changed test files. No coverage tool (Delphi): a signed `min_changed_line_coverage: 0`.
 When the install PR merges, run the tests with coverage on the target once and keep that report: it is the first baseline
-(a flaky test there is quarantined first: `kit/playbooks/safety-net.md`).
+(a flaky test there is quarantined first: `kit/playbooks/safety-net.md`). If that run fails, merge the quarantine PR
+before adding the ruleset: with no baseline yet, its gate cannot pass.
 `{tests}` examples: pytest `pytest {tests}`; PHPUnit `vendor/bin/phpunit {tests}`. Maven and dotnet take class names and
 Delphi (DUnit, DUnitX) takes no file list, so use the whole suite there. Keep CI helper scripts tracked or outside the
 checkout: the red check treats an untracked file as added code and removes it for the base run.

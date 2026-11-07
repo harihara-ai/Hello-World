@@ -2,6 +2,13 @@
 
 purpose: what changed in the North Star kit, by phase and hardening round.
 
+## 1.0.5-silver-synthetic (2026-11-07)
+- **Pilot findings (session C, koa and commons-lang):** P01 a kit upgrade PR (no change folder) passes when it only
+  touches protected files, `.feature` templates under `kit/` included; P02 `.c8rc*` is protected; P03 `metrics.csv`
+  is allowed in a change folder; P04 bug playbook: run the touched modules' tests with a throwaway fix before the plan
+  PR, so a test that pins the bug is in the plan; P05 INSTALL: merge a quarantine PR before the ruleset.
+- **Re-check:** forge 30, unit 171, contract 5, mutation 14 OK; run_traps (1 run) 22/22, 0 false alarms.
+
 ## 1.0.4-silver-synthetic (2026-11-07)
 - **N01 fix (a) dropped (owner, session B2):** no separate AI account. INSTALL: code-owner review on the target branch,
   a ruleset (PR required, no force push) on the branch holding the CI file; only a human merges. Through a code owner's
