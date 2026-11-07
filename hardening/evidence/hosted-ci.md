@@ -38,6 +38,7 @@ download`; `python3 -I ../approved/kit/scripts/gate_check.py auto ... --test-cmd
 | #10 | failing test (discount at 9 units) | failure | skipped (`needs: tests`) | - | blocked | yes |
 | #11 | w1 PR replaces the gate job's steps with `echo gate skipped`, adds `src/extra.py` | success | success (`gate skipped` in the log; gate_check never ran) | - | **clean: mergeable** | **no: NOT BLOCKED** |
 
+#11 was closed (not merged) after the reading, so it cannot be merged by mistake.
 Runs: #3 42364393398, #4 42364397996, #5 42364400588, #6 42364404635, #7 42364407863, #8 42364410646,
 #9 42364415029, #10 42364418291, #11 42364421962. Mergeable state from `GET pulls/N` after all runs.
 t2-t4: the plants stayed on the tests runner; the gate job's `git worktree add` and gate_check ran the real kit
