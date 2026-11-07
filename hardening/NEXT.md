@@ -17,7 +17,24 @@ purpose: where the North Star kit stands, the resume prompt for a new session, a
 **New direction (2026-11-07): `hardening/DIRECTION.md`** (scale ladder S1-S6, debt repos, reliability proof,
 autonomous server, price). It sets the next sessions; the Gold plan below stays the certification target.
 
-## Resume prompt (paste into a new Claude Code session in this repo)
+## Resume prompt for the next session (northstar-kit; supersedes the older one below)
+Owner first: create an empty private repo `harihara-ai/northstar-kit` (no README), then start a Claude Code cloud
+session with harihara-ai/Hello-World and harihara-ai/northstar-kit attached, and paste:
+```
+First run: git fetch origin ccr-25d09baa-rmhk7r && git checkout ccr-25d09baa-rmhk7r (in Hello-World).
+Owner is phone-only: short messages, tap-to-answer questions.
+
+Read CLAUDE.md, then hardening/DIRECTION.md, hardening/roots.md, hardening/RCA.md, hardening/NEXT.md.
+Do DIRECTION.md section 9 in order, stopping at each human gate:
+1. Move: push this branch's history to harihara-ai/northstar-kit as main. Add CI that runs forge lint,
+   forge selftest and hardening/testbed/run_traps.py on every PR (Python only, no secrets). Ask me to add a ruleset
+   (PR, the CI check, code-owner review, no force push). Stop when CI is green on a PR.
+2. R1 golden-path suite, tests first. Show P01, P03, P05 RED on kit 1.0.4 and GREEN on 1.0.5. Stop for the pin.
+Rules: RCA SOP for every finding; prevention before corrections; no new gate unless a root needs it; report only
+what you ran, mark the rest "not run".
+```
+
+## Older resume prompt (Hello-World; kept for reference)
 ```
 First run: git fetch origin ccr-25d09baa-rmhk7r && git checkout ccr-25d09baa-rmhk7r
 Work only on that branch and push to it.

@@ -94,7 +94,16 @@ Cost to reach each confidence level, per repo type, at today's two PRs per slice
 Recommendation: aim for **90% per repo type** now (one modern, one legacy), 95% before the autonomous batch (S6),
 and treat 99% as a program goal measured by escapes, not by pre-merge counts.
 
-## 8. Next three sessions
-1. **Slicer as a script** (section 2, items 1-2), tests first; re-run on the 6 pilot slices; pin.
-2. **S2** on koa: one change with 3 slices; record tokens and minutes per slice.
-3. **Legacy repo choice** for S5 (owner picks a PHP or .NET repo with low coverage), then bootstrap it.
+## 8. Prevention first (RCA SOP)
+Every finding now goes through `hardening/RCA.md`: correct the case, N-whys to the systemic root, prevent the
+class. The pilot's findings cluster into 4 roots (`hardening/roots.md`): R1 the kit's own workflows are never
+executed end to end by a test (P01, P03, P05, M01, N01); R2 protected files are a hand-kept list; R3 human setup
+steps are not verified; R4 sizing and scope are unmeasured judgement (P04, F17).
+
+## 9. Home and next sessions
+Owner decision (2026-11-07): the kit moves to a new private repo **harihara-ai/northstar-kit** (owner creates it
+empty). Its CI runs forge lint, selftest, traps and the golden-path suite on every PR, under a ruleset.
+1. **Move and guard:** push this branch's history to northstar-kit `main`; CI for lint, selftest, run_traps; ruleset.
+2. **R1 golden-path suite** (tests first): install, bootstrap, story, bug, refactor, quarantine and upgrade on
+   fixture repos, through `gate_check` as CI calls it; P01, P03, P05 RED on 1.0.4, GREEN on 1.0.5.
+3. **R4 slicer script** (section 2), then **S2** on koa with tokens and minutes recorded.
