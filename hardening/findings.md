@@ -153,3 +153,20 @@ tests for new code that assert little (R2-4-01, R2-3-05), weakened assertions in
 | C09 | 4 | add | INSTALL | script to print CODEOWNERS lines (R4-4-08) | reject | adds a script; the lead copies one list | closed |
 | J15 | 4 | minor | kitconst | FooTests/ folder, Spec model class (R3-4-06) | reject | wider globs re-open production misclassification (R3-3-08); rename or list in the scan | closed |
 | J16 | 4 | minor | testbed | change folder lacks slices.md (R5-4-02) | accept | add one | fixed (pinned round 4) |
+
+Round 5 (frozen 57e537d; verification only). Raw: R1 1 blocker, 2 major; R2 2 blockers; R3 2 major; R4 1 major; R5 0 (1 minor). Not clean.
+Round 4 fixes re-checked: R1 12/15 hold (hotfix flows fail), R2 4/5 attacks closed, R3 J03 J08 J09 J11 C01-C03 hold, R4 cuts landed (21 concepts, lead setup ~10 steps), R5 20/20 x5, INSTALL walk-through green, CI ~1 s.
+
+| id | round | severity | location | problem | decision | reason | status |
+|---|---|---|---|---|---|---|---|
+| K01 | 5 | blocker | gate_check, changectx | an empty evidence.md lets a plan be reused (R2-5-01) | accept | "used" = evidence.md exists in base (git cat-file -e); done needs a non-empty evidence.md | open |
+| K02 | 5 | blocker | diff_scope | the change folder skips the scan and the protected list; conftest.py, CLAUDE.md, settings planted there pass (R2-5-02) | accept | protected check before the exemption; code files in a change folder always fail | open |
+| K03 | 5 | blocker | playbooks/bug.md | still one PR with the test before G1; fails CI (R1-5-01) | accept | rewrite to plan PR, then code PR with the failing repro test first | open |
+| K04 | 5 | major | INSTALL, bug.md | after a night admin merge no follow-up can pass (R1-5-02) | accept | retro plan PR with spec and evidence.md pointing at the merged commit; passes ready, no code PR | open |
+| K05 | 5 | major | story.md, diff_scope message | no way to change a merged plan (R1-5-03) | accept | a new change folder; message and stop signals say so | open |
+| K06 | 5 | major | INSTALL | no first baseline report (R4-5-01) | accept | the install PR's CI run on the target keeps the first report artifact; doc only | open |
+| K07 | 5 | major | red_check | moving a class or emptying a folder crashes the restore (R3-5-01) | accept | create folders before writing; tolerate a missing backup | open |
+| K08 | 5 | major | cov_import | repo-root files never match container paths (R3-5-02) | accept | one shared segment is enough when the repo path has one segment | open |
+| K09 | 5 | minor | diff_scope, INSTALL | untracked __pycache__ from CI's own test step and gates-*.json would fail or be committed (R2 note, R5-5-01) | accept | bytecode check covers tracked files only; INSTALL lists the two ignore lines | open |
+| K10 | 5 | minor | red_check | runner that finds no tests (pytest exit 5) reads as red (R3-5-04) | accept | exit 5 is a runner error | open |
+| K11 | 5 | minor | commands, templates, state.md | leftover wording: bootstrap policy, gate sign-off, impact.md, docs type, old branch rule, G1 undefined (R1 N1-N3, R4 minors, R3-5-03) | accept | fix wording; one {tests} example line per stack | open |
