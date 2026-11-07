@@ -5,3 +5,11 @@ purpose: phase 6 package build and its verification (2026-11-07).
 - Unpacked to a fresh folder: 70 workspace files match kit.lock hashes, no files outside the lock.
 - In the unpacked package: kit tests unit 169, contract 5, mutation 14 OK; forge tests OK; run_traps 22/22, false alarms 0.
 - Label: Silver on the synthetic test bed, accepted with conditions (see EVIDENCE.md).
+
+## Rebuild 1.0.1 (2026-11-07, after fix plan items 1, 1b, 1c, 3, 4)
+- Built: `bash forge/forge.sh package` -> dist/northstar-kit.zip, 156228 bytes, 164 entries, no bytecode.
+- zip sha256: 1aaf49c54e5c05944eaf986d94cf078d7571a238a3dca508edb68a45fd2589e5 (this note is written after the build, so
+  the zip holds this file without this section).
+- Unpacked to a fresh folder: 70 workspace files match kit.lock, none outside the lock; INSTALL has the two CI jobs.
+- In the unpacked package: kit tests unit 170, contract 5, mutation 14 OK; forge tests OK; run_traps (1 run) 22/22,
+  false alarms 0. The 5-run repeat ran on the repo's pinned workspace, same files.

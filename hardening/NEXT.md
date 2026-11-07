@@ -6,7 +6,7 @@ purpose: where the North Star kit stands, the resume prompt for a new session, a
 - Phases 0-6 done. Package `dist/northstar-kit.zip`, label "Silver on the synthetic test bed", accepted with conditions.
 - Hardening stopped at the round cap (6). L01-L04 fixed after the cap and pinned. Item 1 check done
   (`hardening/evidence/after-cap-check.md`): L01, L03, L04 hold; L02 bypassed, new blocker M01, fixed and pinned (item 1b).
-  Item 3 pinned. New blocker M02: PR tests can forge coverage (item 1c, owner decision).
+  Items 3, 1c (M02, coverage forging) and 4 pinned. Package rebuilt as 1.0.1 (`hardening/evidence/package.md`).
 - Spec `proposal/north-star-v2.md` synced with the kit.
 - Branch `ccr-25d09baa-rmhk7r`. State: `hardening/state.md`. Ledger: `hardening/findings.md`. Pack: `hardening/evidence/EVIDENCE.md`.
 
@@ -31,16 +31,16 @@ Start with item 1 and stop when it is done.
 | # | Issue | Fix | Value | Effort |
 | --- | --- | --- | --- | --- |
 | 1 | done: L01-L04 fixed after the cap, never reviewed | One short check: R2 and R5 only, re-run their round 6 attacks and the INSTALL walk-through. No full round | High: closes the only unreviewed blockers | Low (one session) |
-| 1c | source fixed (option b), pin awaits human. M02: a PR's test forges coverage.py data; CI passes with an untested branch | Owner picks: accept as limit (J04 family), or reuse the coverage gate's COVERAGE_IGNORE scan to fail on coverage-API tokens in changed test files | High: coverage is a floor gate (traps 1, 8) | Low (decision; option b is a list and a test) |
+| 1c | done, pinned (option b). M02: a PR's test forges coverage.py data; CI passes with an untested branch | Owner picks: accept as limit (J04 family), or reuse the coverage gate's COVERAGE_IGNORE scan to fail on coverage-API tokens in changed test files | High: coverage is a floor gate (traps 1, 8) | Low (decision; option b is a list and a test) |
 | 1b | done, pinned. M01: PR tests plant a git hook or config that rewrites the approved kit (t2-t4) | INSTALL only: tests in one job, gate in a second job on a fresh runner that runs no PR code before gate_check. Pin needs a human | High: a blocker | Low (one INSTALL edit, re-run t2-t4) |
 | 2 | J04, J05: weak tests for new code, weakened edited tests | No new gate. In the pilot CI, run diff-scoped mutation testing on changed lines (mutmut, Stryker, PIT or Infection with a since-base option) for Tier 1 modules; report the score in the PR | High: the only real control for the top risk | Medium (CI step per stack) |
 | 3 | done, pinned. J06: coverage exclusions in build files | No new gate. Add `pyproject.toml`, `pom.xml`, `build.gradle`, `package.json`, `*.csproj` to CODEOWNERS in INSTALL so a human always reviews them | Medium | Very low (one INSTALL line) |
-| 4 | source fixed, pin awaits human. L06 minor wording, orphan_id noise, Delphi `{tests}` example | One small batch | Low-medium: removes friction for pilot teams | Low |
+| 4 | done, pinned. L06 minor wording, orphan_id noise, Delphi `{tests}` example | One small batch | Low-medium: removes friction for pilot teams | Low |
 | 5 | G24: install is about 6 manual steps | Make `forge.sh package` lay out files at repo-root paths so install is "unzip into the repo, then /bootstrap" | Medium: first impression of the pilot | Low-medium |
 | 6 | F17: slice sizes are estimates | Wait for pilot metrics; if slices overrun, derive `files` from the impact scan | Low until data shows it | Deferred |
 | 7 | G19: unrequested function inside an in-scope file | Wait; AI review covers it; revisit only if the pilot shows escapes | Low until data shows it | Deferred |
 
-Do 1c and 4 before the pilot (1, 1b, 3 done) (about one session). Do 2 and 5 while setting the pilot up. Leave 6 and 7 to pilot data.
+Pre-pilot items done (1, 1b, 1c, 3, 4) (about one session). Do 2 and 5 while setting the pilot up. Leave 6 and 7 to pilot data.
 
 ## Not run (open register; close an item only with a run and its evidence)
 | Item | Risk if wrong | When |
@@ -53,8 +53,6 @@ Do 1c and 4 before the pilot (1, 1b, 3 done) (about one session). Do 2 and 5 whi
 | False alarms from COVERAGE_API on repos whose code imports coverage | blocked change, no waiver | pilot; widen only on evidence |
 | Coverage settings in Maven, Gradle, npm, dotnet files (item 3 lists them untested) | an unlisted file hides exclusions | pilot, per stack |
 | PATH and other user-level plants beyond ~/.gitconfig | same as M01 on a reused runner | covered by a fresh runner; recheck only if runners are reused |
-| run_traps 5x on the pinned kit (5x ran on the 1c+4 scratch kit) | repeatability after the pin | right after the 1c+4 pin |
-| `dist/northstar-kit.zip` rebuilt | package ships the old INSTALL (M01 open) | after item 4, before handing the kit to a pilot |
 | Agent-driven flows (Genie, commands) in automated scenario runs | only read and hand-run | pilot |
 | Real tracker and language-server probes; multi-vendor review round | simulated only | pilot |
 

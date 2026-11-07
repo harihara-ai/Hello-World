@@ -130,3 +130,6 @@ Scratch pin: changed=6 (kit/INSTALL.md, kit/gates/coverage.py, kit/gates/trace_c
 all high-risk; tests/unit/test_coverage.py, tests/unit/test_trace_check.py).
 Not run: the COVERAGE_API patterns on real PHP (xdebug/pcov), Java (JaCoCo), JS (istanbul) or .NET (coverlet) runs;
 false alarms on repos whose own code legitimately imports coverage (a failed gate is never waived).
+PINNED 1c + 4 (human-approved): changed=6, 4 high-risk; kit.lock sha256 fc46993b... On the pinned kit: tangle 70; lint 49
+clean; selftest lock match, forge 25, unit 170, contract 5, mutation 14 OK; run_traps 5 runs, each 22/22, critical
+17/17, other 5/5, false alarms 0.
