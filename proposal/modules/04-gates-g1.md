@@ -50,7 +50,7 @@ def requirements(body):
     for n, line in body:
         if line.startswith("### "):
             reqs.append({"title": line[4:].strip(), "line": n, "errors_none": False, "scenarios": []})
-        elif reqs and re.fullmatch(r"errors:\s*none\.?", line.strip().lower()):
+        elif reqs and re.fullmatch(r"errors:\s*none\.?", line.strip().lstrip("-* ").lower()):
             reqs[-1]["errors_none"] = True
         elif reqs and SCENARIO.match(line.strip()):
             reqs[-1]["scenarios"].append({"title": line.strip().split(":", 1)[1].strip(), "line": n, "body": []})

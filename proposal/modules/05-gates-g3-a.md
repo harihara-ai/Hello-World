@@ -83,9 +83,10 @@ Section 10.4 check 5. Trap 8. Reads the coverage report and git diff itself (rou
 #!/usr/bin/env python3
 """purpose: changed-line coverage at or above the threshold, and overall coverage not dropping beyond tolerance.
 
-In git: {"report": coverage report path, "base": git ref, "baseline_total": pct, "policy": {...}}. The gate
-reads the report and git diff itself; no production code changed means nothing to check. A report older than
-the changed code fails. Outside git only (fixtures): {changed_lines, covered_lines, baseline_total, current_total}.
+In git: {"reports": [paths], "baseline_total": pct or "baseline_report": path, "base": ref}. gate_check fills
+these from its CI flags only, never from the change folder. The gate reads the reports and git diff itself; no
+production code changed means nothing to check; added coverage-ignore markers fail. Outside git only
+(fixtures): {changed_lines, covered_lines, baseline_total, current_total}.
 """
 import subprocess
 import os
@@ -94,7 +95,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
 from gateio import UsageError, finding, run  # noqa: E402
 import cov_import  # noqa: E402
-from kitconst import CODE_EXT, is_test_file  # noqa: E402
+from kitconst import CODE_EXT, COVERAGE_IGNORE, is_test_file  # noqa: E402
 
 
 def in_git():
@@ -109,18 +110,32 @@ def from_git(p):
             if not is_test_file(f) and f.lower().endswith(CODE_EXT)}
     if not code:
         return [finding("nothing_to_check", "no production code changed", "", "warn")], None
-    if "report" not in p or "baseline_total" not in p:
-        return [finding("report_required", "code changed: give a coverage report and baseline_total")], None
-    newest = max((os.path.getmtime(f) for f in code if os.path.exists(f)), default=0)
-    if os.path.getmtime(p["report"]) < newest:
-        return [finding("stale_report", "the coverage report is older than the changed code; re-run the tests")], None
-    rep, f, changed, covered = cov_import.parse_report(p["report"]), [], {}, {}
+    reports = p.get("reports") or []
+    if not reports or ("baseline_total" not in p and "baseline_report" not in p):
+        return [finding("report_required", "code changed: CI must pass --coverage-report and a baseline")], None
+    f = []
+    for path, lines in code.items():
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            text = fh.read().lower().splitlines()
+        for n in sorted(lines):
+            if n <= len(text) and any(m in text[n - 1] for m in COVERAGE_IGNORE):
+                f.append(finding("coverage_exclusion_added", "added line %d hides code from coverage" % n, path))
+    newest = max((os.path.getmtime(x) for x in code if os.path.exists(x)), default=0)
+    if any(os.path.getmtime(r) < newest for r in reports):
+        return f + [finding("stale_report", "a coverage report is older than the changed code; re-run the tests")], None
+    rep, changed, covered = cov_import.parse_reports(reports), {}, {}
+    measured = {os.path.splitext(k)[1].lower() for k in rep["instrumented"]}
     for path, lines in code.items():
         key = cov_import.match(path, rep["instrumented"])
+        if not key and os.path.splitext(path)[1].lower() not in measured:
+            f.append(finding("not_measured", "the report does not measure %s files: %s" % (os.path.splitext(path)[1], path), path, "warn"))
+            continue
         if not key:
             f.append(finding("unmatched_file", "%s is not in the report; counted as uncovered" % path, path, "warn"))
         changed[path] = sorted(lines & rep["instrumented"][key]) if key else sorted(lines)
         covered[path] = sorted(rep["covered"].get(key, set())) if key else []
+    if "baseline_report" in p:
+        p["baseline_total"] = cov_import.parse_report(p["baseline_report"])["total"]
     return f, (changed, covered, rep["total"])
 
 
@@ -162,8 +177,9 @@ Sections 10.4 check 9, 16.5. Trap 7. In git, git is the truth; protected paths a
 #!/usr/bin/env python3
 """purpose: flag changed files outside the impact scan, protected files, and production files when forbidden.
 
-Input: {"base": git ref, "impact_scan": [globs], "change_dir": path, "no_production": bool} in a git repo;
-outside git, {"changed_files": [...]} is used instead. In git, listed files are ignored: git is the truth.
+Input: {"base": git ref, "impact_scan": [globs], "change_dir": path, "plan_files": [paths], "no_production": bool}
+in a git repo; outside git, {"changed_files": [...]} is used instead. In git, listed files are ignored: git is the
+truth. Changes to the approved plan files fail (the plan is approved by merging its own PR).
 """
 import subprocess
 import os
@@ -171,7 +187,7 @@ import re
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
 from gateio import UsageError, finding, run  # noqa: E402
-from kitconst import NOT_PRODUCTION, PROTECTED, matches  # noqa: E402
+from kitconst import PROTECTED, is_production, matches  # noqa: E402
 
 
 def in_git():
@@ -201,19 +217,22 @@ def check(p):
         changed = p["changed_files"]
     else:
         raise UsageError("need 'base' in a git repo, or 'changed_files' outside git")
+    plan = set(p.get("plan_files", []))
+    f += [finding("plan_changed", "the approved plan changed after G1; change it in a new plan PR: %s" % c, c)
+          for c in changed if c in plan]
     ch = p.get("change_dir", "").rstrip("/")
     changed = [c for c in changed if not (ch and c.startswith(ch + "/")) and "__pycache__/" not in c]
     f += [finding("protected_path", "a human changes this file in its own PR: %s" % c, c) for c in changed if matches(c, PROTECTED)]
     scan = p.get("impact_scan", [])
     if not scan:
         return f + [finding("no_impact_scan", "no impact scan given")], {}
-    broad = [g for g in scan if g.strip("*/") == ""]
+    broad = [g for g in scan if not re.sub(r"[*?./\[\]]", "", g)]
     if broad:
         return f + [finding("scan_too_broad", "impact scan must name files or folders, not %s" % broad)], {}
     f += [finding("outside_scan", "changed but not in the impact scan: %s" % c, c) for c in changed if not matches(c, scan)]
     if p.get("no_production"):
         f += [finding("production_change", "this work item may not change production files: %s" % c, c)
-              for c in changed if not matches(c, NOT_PRODUCTION)]
+              for c in changed if is_production(c)]
     return f, {"changed_files": changed}
 
 

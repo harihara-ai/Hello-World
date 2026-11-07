@@ -4,77 +4,202 @@ purpose: working source for the scripts components of the kit (tangled into work
 
 Helpers used by gates and commands.
 
-## script.probe
+## script.gate_check
 
-Sections 4, 5. Trap 10.
+Section 10.6. Runs floor gates plus repo gates; the type can only add. Sets gate targets, base, sign-off and the approved plan itself; coverage and test command come from CI flags (round 3 H02, H04, H07).
 
-````python file=kit/scripts/probe.py
+````python file=kit/scripts/gate_check.py
 #!/usr/bin/env python3
-"""purpose: pick one tool per capability from probe results using the ranked fallbacks (section 4).
+"""purpose: run the gates for 'ready' or 'done' (kit floor plus repo list; the work type can only add).
 
-Input: {"results": {tool: {"ok": bool, "reason": str}}, "capabilities": [names]}. Tools not probed are skipped.
-Usage: probe.py INPUT.json|- [--out docs/ai/toolchain.md]. Exit 1 when a capability has no working tool (ask).
+Usage: gate_check.py ready|done --repo DIR --change openspec/changes/<name>|auto [--base REF] [--also g1,g2]
+       [--coverage-report PATH ...] [--baseline-report PATH | --baseline-total N] [--test-cmd "CMD"]
+Gate targets are set here, never by the change folder. In git: policy baseline, sign-off and, at done, the
+approved plan (spec, Type, impact scan) come from the base commit; coverage evidence and the test command come
+from flags (CI sets them; kit/INSTALL.md). Exit 0 all pass, 1 any fail, 2 bad usage.
 """
-import os
 import sys
+import tempfile
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from gateio import UsageError, finding, run  # noqa: E402
+sys.dont_write_bytecode = True
+sys.pycache_prefix = PYCACHE = tempfile.mkdtemp(prefix="kit-pycache-")  # before any kit import: no planted .pyc
+import argparse  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import re  # noqa: E402
+import subprocess  # noqa: E402
 
-RANKED = {  # keyed by adapter name in kit.manifest.yml; add a tool by adding its adapter first
-    "codenav": ["serena", "ctags"],
-    "tracker": ["github", "jira", "azdo", "file"],
-}
-
-
-def choose(cap, results):
-    rejected = []
-    for tool in RANKED[cap]:
-        r = results.get(tool)
-        if r is None:
-            continue
-        if r.get("ok"):
-            return tool, rejected
-        rejected.append({"tool": tool, "reason": r.get("reason", "probe failed")})
-    return None, rejected
-
-
-def toolchain_md(caps):
-    rows = ["purpose: tools chosen by the /bootstrap probe, with the reason for each fallback.", "",
-            "| Capability | Chosen | Rejected (reason) |", "| --- | --- | --- |"]
-    for cap, c in caps.items():
-        rej = "; ".join("%s (%s)" % (r["tool"], r["reason"]) for r in c["rejected"]) or "none"
-        rows.append("| %s | %s | %s |" % (cap, c["chosen"] or "ASK THE USER", rej))
-    return "\n".join(rows) + "\n"
+HERE = os.path.dirname(os.path.abspath(__file__))
+KIT = os.path.dirname(HERE)
+FLOOR = os.path.join(KIT, "core", "policy.yml")
+KNOWN = ["injection", "policy_guard", "spec_lint", "granularity", "trace_check", "coverage", "diff_scope", "flaky",
+         "red_check"]
+CHANGE = re.compile(r"openspec/changes/[A-Za-z0-9][A-Za-z0-9._-]*")
+sys.path.insert(0, HERE)
+import policy  # noqa: E402
+from changectx import PLAN_FILES, approved_plan, changed_paths, default_base, from_base, git, texts_under  # noqa: E402
+from kitconst import PROTECTED, TYPES, is_production, matches  # noqa: E402
 
 
-def main(argv):
-    out = None
-    if "--out" in argv:
-        i = argv.index("--out")
-        out = argv[i + 1] if i + 1 < len(argv) else None
-        argv = argv[:i] + argv[i + 2:]
+def payload_for(gate, ctx):
+    p, ch, plan = {}, ctx["change"], ctx["plan"]
+    path = os.path.join(plan if gate == "diff_scope" else ch, "inputs", gate + ".json")
+    if os.path.isfile(path):
+        with open(path, encoding="utf-8") as fh:
+            p = json.load(fh)
+    p["policy"] = ctx["policy"]
+    if gate == "spec_lint":
+        p["spec"] = os.path.join(ch, "spec.md")
+    elif gate == "injection":
+        p["texts"] = texts_under(ch) + list(p.get("texts", []))
+    elif gate == "trace_check":
+        p = {"spec_dirs": [plan], "type": ctx["type"]}
+    elif gate == "policy_guard":
+        p = {"old": FLOOR, "baselines": ctx["baselines"], "new": ctx["policy_path"], "signoff": ctx["signoff"]}
+    elif gate == "diff_scope":
+        p.update(change_dir=ch, no_production=bool(p.get("no_production")) or ctx["no_production"],
+                 plan_files=["%s/%s" % (ch, f) for f in PLAN_FILES] if ctx["stage"] == "done" else [])
+        if ctx["base"]:
+            p["base"] = ctx["base"]
+    elif gate == "coverage" and ctx["base"]:
+        p = dict(ctx["coverage"], base=ctx["base"], policy=ctx["policy"])
+    elif gate == "red_check":
+        p = {"base": ctx["base"], "type": ctx["type"], "test_cmd": ctx["test_cmd"]}
+    return p
 
-    def check(p):
-        results = p.get("results", {})
-        caps = p.get("capabilities") or [c for c, tools in RANKED.items() if any(t in results for t in tools)]
-        unknown = [c for c in caps if c not in RANKED]
-        if unknown:
-            raise UsageError("unknown capability: %s" % unknown)
-        chosen = {}
-        for c in caps:
-            tool, rejected = choose(c, results)
-            chosen[c] = {"chosen": tool, "rejected": rejected}
-        if out:
-            with open(out, "w", encoding="utf-8") as fh:
-                fh.write(toolchain_md(chosen))
-        f = [finding("no_tool", "no working tool for %s: ask the user and record the answer" % c, c)
-             for c, v in chosen.items() if v["chosen"] is None]
-        return f, {"capabilities": chosen}
 
-    return run("probe", check, argv)
+def run_gate(gate, payload):
+    proc = subprocess.run([sys.executable, "-I", "-B", "-X", "pycache_prefix=" + PYCACHE,
+                           os.path.join(KIT, "gates", gate + ".py"), "-"],
+                          input=json.dumps(payload), capture_output=True, text=True)
+    try:
+        out = json.loads(proc.stdout)
+    except ValueError:
+        out = {"gate": gate, "pass": False, "error": (proc.stdout + proc.stderr)[-500:], "findings": []}
+    out["pass"] = bool(out.get("pass")) and proc.returncode == 0
+    return out
+
+
+def spec_type(d):
+    try:
+        with open(os.path.join(d, "spec.md"), encoding="utf-8") as fh:
+            m = re.search(r"(?m)^Type:\s*(\S+)", fh.read())
+    except OSError:
+        return "story"
+    t = m.group(1).lower() if m else "story"
+    return t if t in TYPES else "story"
+
+
+def finish(report, ch):
+    if ch:
+        with open(os.path.join(ch, "gates-%s.json" % report["stage"]), "w", encoding="utf-8") as fh:
+            json.dump(report, fh, indent=1)
+    print(json.dumps(report, indent=1))
+    return 0 if report["pass"] else 1
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("stage", choices=["ready", "done"])
+    ap.add_argument("--repo", default=".")
+    ap.add_argument("--change", required=True)
+    ap.add_argument("--base")
+    ap.add_argument("--also", default="")
+    ap.add_argument("--coverage-report", action="append", default=[])
+    ap.add_argument("--baseline-report")
+    ap.add_argument("--baseline-total", type=float)
+    ap.add_argument("--test-cmd")
+    a = ap.parse_args()
+    also = [g for g in a.also.split(",") if g]
+    if any(g not in KNOWN for g in also):
+        ap.error("--also accepts only: %s" % ", ".join(KNOWN))
+    if a.change != "auto" and (not CHANGE.fullmatch(a.change.rstrip("/")) or ".." in a.change):
+        ap.error("--change must be openspec/changes/<name> or auto")
+    reports = [os.path.abspath(r) for r in a.coverage_report]
+    baseline_report = os.path.abspath(a.baseline_report) if a.baseline_report else None
+    os.chdir(a.repo)
+    in_git = git("rev-parse", "--is-inside-work-tree") == "true"
+    base = (a.base or default_base()) if in_git else None
+    if in_git and not base:
+        ap.error("no remote default branch to compare with: pass --base <ref> (CI passes the merge-base)")
+    ch = a.change.rstrip("/")
+    if ch == "auto":
+        if not in_git:
+            ap.error("--change auto needs git")
+        found = sorted({m.group(0) for p in changed_paths(base) for m in [CHANGE.match(p)] if m and p != m.group(0)})
+        if len(found) != 1:
+            code = [p for p in changed_paths(base) if is_production(p) and not matches(p, PROTECTED)]
+            ok = not found and not code
+            why = ("no change folder and no production code changed" if ok else
+                   "one PR holds exactly one change folder; found %s" % (found or "none") +
+                   ("" if found else ", but production code changed: %s" % code[:5]))
+            return finish({"stage": a.stage, "change": None, "pass": ok, "error": why, "gates": []}, None)
+        ch = found[0]
+    policy_path = os.path.join("docs", "ai", "policy.yml")
+    if not os.path.isfile(policy_path):
+        policy_path = FLOOR
+    floor, pol = policy.load(FLOOR), policy.load(policy_path)
+    plan = approved_plan(base, ch) if in_git and a.stage == "done" else ch
+    wtype = spec_type(plan or ch)
+    rule = TYPES[wtype]
+    signoff = from_base(base, "docs/ai/policy-signoff.json") if in_git else os.path.join("docs", "ai", "policy-signoff.json")
+    cov = {"reports": reports}
+    cov.update({"baseline_report": baseline_report} if baseline_report else {})
+    cov.update({"baseline_total": a.baseline_total} if a.baseline_total is not None else {})
+    ctx = {"change": ch, "stage": a.stage, "plan": plan or ch, "policy": pol, "policy_path": policy_path,
+           "base": base, "type": wtype, "baselines": [b for b in [from_base(base, "docs/ai/policy.yml")] if b],
+           "signoff": signoff, "no_production": bool(rule.get("no_production")), "coverage": cov, "test_cmd": a.test_cmd}
+    key, gates = a.stage + "_gates", []
+    extra = rule.get("add", []) if a.stage == "done" else []
+    for g in floor.get(key, []) + pol.get(key, []) + also + extra:
+        if g in KNOWN and g not in gates:
+            gates.append(g)
+    results = [run_gate(g, payload_for(g, ctx)) for g in gates]
+    if plan is None:
+        results.insert(0, {"gate": "plan", "pass": False, "findings": [{"rule": "plan_not_approved", "severity": "fail",
+                           "where": ch, "message": "the plan is not in the base commit: merge the plan PR first"}]})
+    ran = {r["gate"] for r in results}
+    missing = [g for g in floor.get(key, []) if g not in ran]
+    report = {"stage": a.stage, "change": ch, "type": wtype, "pass": all(r["pass"] for r in results) and not missing,
+              "missing_floor_gates": missing, "gates": results}
+    return finish(report, ch)
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    sys.exit(main())
+````
+
+## script.state
+
+Section 17.1.
+
+````bash file=kit/scripts/state.sh
+#!/usr/bin/env bash
+# purpose: print the Genie state as JSON: branch, ticket key, change folder, next step, last gate result, bootstrapped.
+# last_gate is a hint only: it is a file in the repo, so commands re-run gate_check before relying on it.
+# Usage: bash scripts/state.sh   (run from anywhere inside the repo)
+set -u
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || branch=""
+root=$(git rev-parse --show-toplevel 2>/dev/null) || root="$PWD"
+change="${branch##*/}"
+ticket=$(printf '%s' "$branch" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | head -1)
+exec python3 -I -B -c '
+import glob, json, os, sys
+branch, ticket, change, root = sys.argv[1:5]
+d = os.path.join(root, "openspec", "changes", change) if change else ""
+state = {"branch": branch or None, "ticket": ticket or None, "change": change or None,
+         "change_exists": bool(d) and os.path.isdir(d), "next": None, "last_gate": None,
+         "bootstrapped": os.path.isfile(os.path.join(root, "docs", "ai", "index.json"))}
+status = os.path.join(d, "status.md")
+if state["change_exists"] and os.path.isfile(status):
+    for line in open(status, encoding="utf-8"):
+        if line.startswith("next:"):
+            state["next"] = line[5:].strip()
+gates = sorted(glob.glob(os.path.join(d, "gates-*.json")), key=os.path.getmtime) if state["change_exists"] else []
+if gates:
+    with open(gates[-1], encoding="utf-8") as fh:
+        g = json.load(fh)
+    state["last_gate"] = {"stage": g.get("stage"), "pass": g.get("pass")}
+print(json.dumps(state))
+' "$branch" "$ticket" "$change" "$root"
 ````

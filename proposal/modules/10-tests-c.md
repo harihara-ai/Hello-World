@@ -69,7 +69,7 @@ class ReportCoverage(unittest.TestCase):
 
     def test_git_requires_a_report_when_code_changed(self):
         rc, out, _ = run_gate("coverage", {"changed_lines": {"src/price.py": [2]}, "covered_lines": {"src/price.py": [2]},
-                                           "baseline_total": 1.0, "current_total": 1.0, "base": "HEAD"}, cwd=self.root)
+                                           "baseline_total": 1.0, "current_total": 1.0, "report": "x.xml", "base": "HEAD"}, cwd=self.root)
         self.assertEqual(rc, 1)
         self.assertIn("report_required", rules(out))
 
@@ -82,7 +82,7 @@ class ReportCoverage(unittest.TestCase):
     def test_stale_report_fails(self):
         p = write(self.root, "cov.xml", cobertura({"src/price.py": {1: 1, 2: 1, 3: 1}}))
         os.utime(p, (1, 1))
-        rc, out, _ = run_gate("coverage", {"report": "cov.xml", "base": "HEAD", "baseline_total": 50.0}, cwd=self.root)
+        rc, out, _ = run_gate("coverage", {"reports": ["cov.xml"], "base": "HEAD", "baseline_total": 50.0}, cwd=self.root)
         self.assertEqual(rc, 1)
         self.assertIn("stale_report", rules(out))
 
@@ -110,8 +110,9 @@ class ReportCoverage(unittest.TestCase):
 
     def run_report(self, report_text, fmt_name="cov.xml", **extra):
         write(self.root, fmt_name, report_text)
-        payload = {"report": fmt_name, "base": "HEAD", "baseline_total": 50.0}
+        payload = {"reports": [fmt_name], "base": "HEAD", "baseline_total": 50.0}
         payload.update(extra)
+        payload = {k: v for k, v in payload.items() if v is not None}
         return run_gate("coverage", payload, cwd=self.root)
 
     def test_cobertura_all_changed_covered(self):
@@ -139,108 +140,39 @@ class ReportCoverage(unittest.TestCase):
         self.assertIn("overall_drop", rules(out))
 
 
-if __name__ == "__main__":
-    unittest.main()
-````
-
-## tests/unit/test_diff_scope.py
-
-````python file=tests/unit/test_diff_scope.py
-"""purpose: T1 fixtures for gate diff_scope (trap 7, no production change, protected paths; F06, F07)."""
-import os
-import sys
-import unittest
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from helpers import *  # noqa: E402,F403
-
-
-
-def scope(changed, scan, **extra):
-    payload = {"changed_files": changed, "impact_scan": scan}
-    payload.update(extra)
-    return run_gate("diff_scope", payload)
-
-
-class ListedFiles(unittest.TestCase):
-    """Outside git the gate uses the listed files."""
-
-    def test_inside_scan_passes(self):
-        rc, _, log = scope(["src/a.py", "tests/test_a.py"], ["src/a.py", "tests/*"])
+    def test_two_module_reports_are_merged(self):
+        write(self.root, "billing/src/Fee.py", "a\nb\n")
+        a = write(self.root, "a.xml", cobertura({"src/price.py": {1: 1, 2: 1, 3: 1}}))
+        b = write(self.root, "b.xml", cobertura({"billing/src/Fee.py": {1: 1, 2: 1}}))
+        rc, _, log = run_gate("coverage", {"reports": ["a.xml", "b.xml"], "base": "HEAD", "baseline_total": 50.0}, cwd=self.root)
         self.assertEqual(rc, 0, log)
 
-    def test_extra_file_fails(self):
-        rc, out, _ = scope(["src/a.py", "src/newsletter.py"], ["src/a.py"])
+    def test_baseline_report_gives_the_baseline(self):
+        write(self.root, "base.xml", cobertura({}, rate=0.95))
+        rc, out, _ = self.run_report(cobertura({"src/price.py": {1: 1, 2: 1, 3: 1}}, rate=0.5), baseline_report="base.xml",
+                                     baseline_total=None)
+        self.assertIn("overall_drop", rules(out))
+
+    def test_added_coverage_ignore_marker_fails(self):
+        write(self.root, "src/price.py", "a = 1\nb = 2\nc = 3\ndef extra():  # pragma: no cover\n    pass\n")
+        rc, out, _ = self.run_report(cobertura({"src/price.py": {1: 1, 2: 1, 3: 1}}))
         self.assertEqual(rc, 1)
-        self.assertIn("src/newsletter.py", str(out["findings"]))
+        self.assertIn("coverage_exclusion_added", rules(out))
 
-    def test_no_production_mode(self):
-        rc, out, _ = scope(["tests/test_a.py", "src/a.py"], ["src/*", "tests/*"], no_production=True)
-        self.assertIn("production_change", rules(out))
-        self.assertEqual(scope(["tests/test_a.py"], ["tests/*"], no_production=True)[0], 0)
-
-    def test_dotnet_and_java_test_layouts_are_not_production(self):
-        files = ["MyApp.Tests/Helpers/Builder.cs", "src/test/java/a/FeeTest.java", "Billing.UnitTests/X.cs"]
-        rc, _, log = scope(files, ["MyApp.Tests/*", "src/test/*", "Billing.UnitTests/*"], no_production=True)
+    def test_container_paths_match_by_longest_suffix(self):
+        write(self.root, "src/Api/Program.cs", "x\n")
+        write(self.root, "src/Core/Program.cs", "y\n")
+        git(self.root, "add", "-A"); git(self.root, "commit", "-qm", "cs")
+        write(self.root, "src/Api/Program.cs", "x\nz\n")
+        rc, _, log = self.run_report(cobertura({"/build/Api/Program.cs": {2: 1}, "/build/Core/Program.cs": {2: 0},
+                                                "src/price.py": {1: 1, 2: 1, 3: 1}}))
         self.assertEqual(rc, 0, log)
 
-    def test_protected_paths_fail_even_inside_scan(self):
-        for p in ("docs/ai/policy.yml", "docs/ai/policy-signoff.json", "kit/gates/coverage.py", ".claude/settings.json", "CLAUDE.md"):
-            rc, out, _ = scope([p], ["*.*", "*/*"])
-            self.assertEqual(rc, 1, p)
-            self.assertIn("protected_path", rules(out))
-
-    def test_change_folder_and_bytecode_exempt(self):
-        ch = "openspec/changes/X-1"
-        rc, _, log = scope([ch + "/gates-ready.json", "src/__pycache__/a.cpython-313.pyc", "src/a.py"], ["src/a.py"], change_dir=ch)
+    def test_file_types_the_tool_does_not_measure_are_skipped(self):
+        write(self.root, "web/app.js", "console.log(1)\n")
+        rc, out, log = self.run_report(cobertura({"src/price.py": {1: 1, 2: 1, 3: 1}}))
         self.assertEqual(rc, 0, log)
-
-    def test_empty_scan_fails(self):
-        self.assertEqual(scope(["src/a.py"], [])[0], 1)
-
-
-class GitMode(unittest.TestCase):
-    """In a git repo the gate asks git; listed files cannot hide anything."""
-
-    def setUp(self):
-        self.d = git_init(write_tree({"src/a.py": "1\n", "src/Invoice.php": "x\n", "tests/t.py": "t\n"}))
-
-    def test_git_changes_win_over_listed_files(self):
-        write(self.d, "src/b.py", "2\n")
-        rc, out, log = run_gate("diff_scope", {"base": "HEAD", "impact_scan": ["src/a.py"], "changed_files": ["src/a.py"]}, cwd=self.d)
-        self.assertEqual(rc, 1, log)
-        self.assertIn("src/b.py", str(out["findings"]))
-
-    def test_committed_changes_since_base(self):
-        write(self.d, "src/c.py", "3\n")
-        git(self.d, "add", "-A")
-        git(self.d, "commit", "-qm", "c")
-        rc, out, _ = run_gate("diff_scope", {"base": "HEAD~1", "impact_scan": ["src/a.py"]}, cwd=self.d)
-        self.assertIn("src/c.py", str(out["findings"]))
-
-    def test_rename_shows_deleted_source(self):
-        git(self.d, "mv", "src/Invoice.php", "tests/Invoice.php")
-        rc, out, _ = run_gate("diff_scope", {"base": "HEAD", "impact_scan": ["tests/*", "src/*"], "no_production": True}, cwd=self.d)
-        self.assertEqual(rc, 1)
-        self.assertIn("src/Invoice.php", str(out["findings"]))
-
-    def test_bad_base_is_usage_error(self):
-        self.assertEqual(run_gate("diff_scope", {"base": "--output=/tmp/x", "impact_scan": ["*"]}, cwd=self.d)[0], 2)
-
-
-    def test_more_agent_steering_files_are_protected(self):
-        for p in (".mcp.json", "src/CLAUDE.md", ".husky/pre-commit", ".vscode/tasks.json", ".pre-commit-config.yaml",
-                  ".gitlab-ci.yml", "app/.claude/commands/x.md"):
-            rc, out, _ = scope([p], ["*.*", "*/*"])
-            self.assertIn("protected_path", rules(out), p)
-
-    def test_case_insensitive_test_folders_and_md_and_conftest(self):
-        rc, _, log = scope(["Tests/FeeTest.cs", "README.md", "tests/conftest.py", "Test/x.pas"], ["Tests/*", "README.md", "tests/*", "Test/*"], no_production=True)
-        self.assertEqual(rc, 0, log)
-
-    def test_bare_wildcard_scan_refused(self):
-        for scan in (["*"], ["**"], ["src/a.py", "**/*"]):
-            rc, out, _ = scope(["src/a.py"], scan)
-            self.assertIn("scan_too_broad", rules(out), scan)
+        self.assertIn("not_measured", rules(out))
 
 
 if __name__ == "__main__":

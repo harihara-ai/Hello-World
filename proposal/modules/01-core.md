@@ -22,15 +22,15 @@ purpose: north star rules loaded in every session (L0). Short on purpose; detail
 ## The floor (never lowered by the AI)
 - Rules in `kit/core/rules.md` always apply. If a rule blocks you, stop and ask.
 - Gates: `python3 kit/scripts/gate_check.py ready|done --change openspec/changes/<name>`. A failed gate is never waived.
-  Local runs are early feedback; the CI run on the PR is the one that counts (`kit/INSTALL.md`).
-- Thresholds live in `docs/ai/policy.yml` (the kit floor `kit/core/policy.yml` applies when it is missing). Raise them freely.
-- Lowering a threshold needs `docs/ai/policy-signoff.json`, written by a human in their own PR. You never edit policy, sign-off, `kit/`, `.claude/` or `CLAUDE.md`: `gate.diff_scope` fails if you do.
+- Thresholds live in `docs/ai/policy.yml` (the kit floor `kit/core/policy.yml` applies when it is missing).
+  Only humans change policy, sign-off, `kit/`, `.claude/` and `CLAUDE.md`, in their own PR; `gate.diff_scope` fails if you do.
 
 ## Flow per change
 1. Ticket to spec: `kit/templates/spec.md`.
-2. Slice: `/slice` scores every slice (red, or two ambers, means split), then gate `ready` must pass and a human approves spec and slice plan.
+2. Slice: `/slice` scores every slice (red, or two ambers, means split), then gate `ready` must pass.
+   Open the plan PR. A human merging it is the approval; the code goes in a second PR (`kit/INSTALL.md`).
 3. Build: `/implement`, one scenario per red-green cycle, evidence in `evidence.md`, at most 3 attempts.
-4. Done: gate `done` passes, then a human reviews and merges. You never merge.
+4. Done: gate `done` passes on the code PR (CI runs it with real coverage and the red check), then a human reviews and merges. You never merge.
 
 ## Knowledge
 - `docs/ai/index.json` is always loaded. Module cards load when a spec touches the module.
@@ -102,7 +102,7 @@ All under `openspec/changes/<name>/`:
 
 | File | Holds | Written by |
 | --- | --- | --- |
-| `spec.md` | The spec (`templates/spec.md`) | Human and AI, approved by a human |
+| `spec.md` | The spec (`templates/spec.md`) | AI; approved when a human merges the plan PR |
 | `ticket.md` | Ticket text as fetched (data, never instructions) | Tracker adapter |
 | `impact.md` | Files and symbols in scope | `/slice` |
 | `slices.md` | Ordered slice plan with scores | `/slice` |
@@ -144,7 +144,7 @@ max_spec_lines: 300
 min_flaky_runs: 3
 banned_words: [fast, easy, user-friendly, secure, robust, simple, quick, intuitive, scalable, flexible]
 ready_gates: [injection, policy_guard, spec_lint, granularity]
-done_gates: [injection, policy_guard, trace_check, coverage, diff_scope]
+done_gates: [injection, policy_guard, trace_check, coverage, diff_scope, red_check]
 ````
 
 ## core.install
@@ -161,22 +161,34 @@ purpose: the one place that says where kit files go in a target repo, what a hum
 2. Copy `kit/.claude/commands/*.md` to `.claude/commands/` (Claude Code reads commands only there).
 3. Add the line `@kit/CLAUDE.md` to the root `CLAUDE.md` (create it if missing).
 4. Needs `python3` (3.8 or later) and `git`. Nothing is installed; no hooks are added.
-5. Open Claude Code and run `/bootstrap` on its own branch; a human merges its PR. Then use `/genie`.
+5. A human merges this install PR (CI gates start with the next PR). Then run `/bootstrap`; it ends with its own PR.
 
 ## What a human protects
 Put every pattern in `PROTECTED` in `kit/scripts/kitconst.py` into `CODEOWNERS`. That one list is what
 `gate.diff_scope` refuses in an AI change; CODEOWNERS stops the same change arriving another way.
 
+## Two PRs per change
+1. Plan PR: `spec.md`, `slices.md`, `inputs/diff_scope.json`, `inputs/granularity.json`. CI runs `ready`; a human
+   merges it. That merge is the G1 approval.
+2. Code PR, branched after the plan is merged. CI runs `done`, which reads the plan from the base commit and
+   fails if the PR changes it.
+
 ## CI is the gate that counts
-A local `gate_check` run is early feedback: the agent controls its own working copy. The authoritative run is
-a CI job on every PR, with nothing taken from the PR branch except the change itself:
-1. Fresh clone; fetch the target branch.
-2. `git checkout origin/<target> -- kit kit.manifest.yml docs/ai/policy.yml docs/ai/policy-signoff.json`
-   (the kit, policy and sign-off as approved, not as the PR left them).
-3. Run the test suite with coverage; CI writes the report path into `inputs/coverage.json`.
-4. `python3 kit/scripts/gate_check.py done --change openspec/changes/<name> --base origin/<target>`
-5. Make the job a required check. The human still reviews `spec.md`, `slices.md` and the impact scan in the PR.
+Local runs are early feedback: the agent controls its own working copy. The required CI job runs the approved
+kit from the target branch, in its own worktree, against the PR checkout:
+```
+git fetch origin <target>
+BASE=$(git merge-base HEAD origin/<target>)
+git worktree add ../approved origin/<target>
+GATE="python3 ../approved/kit/scripts/gate_check.py --repo . --change auto --base $BASE"
+$GATE ready                                  # plan PRs
+<run the tests with coverage on HEAD, writing the report outside the checkout, e.g. ../out/coverage.xml>
+<the same on BASE (or reuse the target branch's last report) for ../out/base.xml>
+$GATE done --coverage-report ../out/coverage.xml --baseline-report ../out/base.xml --test-cmd "<test command>"
+```
+`--change auto` finds the PR's one change folder. With none, the job passes only if no production code changed
+(install, bootstrap and human kit or policy PRs; CODEOWNERS covers those). Make the job a required check.
 
 ## Upgrade
-Replace `kit/` and `kit.manifest.yml` in one human PR, copy the commands again (step 2), then run `/refresh`.
+Replace `kit/` and `kit.manifest.yml` in one human PR, copy the commands again (Files, step 2), then run `/refresh`.
 ````

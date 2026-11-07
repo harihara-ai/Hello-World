@@ -106,6 +106,10 @@ Paths and dependencies only. Hashes live in kit.lock (written by tangle --pin).
   type: gate
   path: kit/gates/flaky.py
   needs: [script.gateio, core.policy]
+- id: gate.red_check
+  type: gate
+  path: kit/gates/red_check.py
+  needs: [script.gateio, core.policy, script.kitconst]
 - id: script.gateio
   type: script
   path: kit/scripts/gateio.py
@@ -122,10 +126,14 @@ Paths and dependencies only. Hashes live in kit.lock (written by tangle --pin).
   type: script
   path: kit/scripts/policy.py
   needs: [core.policy]
+- id: script.changectx
+  type: script
+  path: kit/scripts/changectx.py
+  needs: [core.rules]
 - id: script.gate_check
   type: script
   path: kit/scripts/gate_check.py
-  needs: [script.policy, script.kitconst, core.policy]
+  needs: [script.policy, script.kitconst, script.changectx, core.policy]
 - id: script.state
   type: script
   path: kit/scripts/state.sh

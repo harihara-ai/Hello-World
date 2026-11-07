@@ -17,7 +17,7 @@
    "tests/Invoice.php"
   ]
  ],
- "patch": {
+ "patch_base": {
   "openspec/changes/INV-7-late-fee/spec.md": [
    [
     "Type: story",

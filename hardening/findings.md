@@ -94,21 +94,23 @@ Root causes:
 
 | id | round | severity | location | problem | decision | reason | status |
 |---|---|---|---|---|---|---|---|
-| H01 | 3 | blocker | INSTALL.md CI | RC-B overlay hides PR edits and runs PR-added kit files; pathspec fails when policy files are absent | accept | approved kit in its own worktree; --repo is the PR checkout; --base merge-base | open |
-| H02 | 3 | blocker | coverage, gate_check | RC-C baseline_total and report path come from the PR (R2-3-03, R1-3-06, R3-3-02) | accept | --coverage-report (repeatable) and --baseline-report or --baseline-total flags only | open |
-| H03 | 3 | blocker | coverage | pragma: no cover on added code passes (R2-3-04) | accept | coverage-ignore markers on added lines fail; coverage config files join PROTECTED | open |
-| H04 | 3 | blocker | gate_check done | RC-D approved plan re-read from the PR (R2-3-06) | accept | owner chose two PRs: plan PR merged by a human = G1 approval; done reads the plan from the base commit (also closes G27) | open |
-| H05 | 3 | blocker | new gate red_check | RC-E tests with no asserts pass all gates (R2-3-05) | accept | owner chose red_check: changed tests run against base production code in CI | open |
-| H06 | 3 | major | gate_check | planted .pyc loaded by gate_check itself; zero gates ran and passed (R2-3-02, R2-2-04) | accept | set pycache prefix before imports; fail if a floor gate did not run; tangle --check and package reject __pycache__ | open |
-| H07 | 3 | major | INSTALL, gate_check | no rule for the change name or PRs without a change folder (R1-3-04, R4-3-03) | accept | --change auto: one change folder from the diff; none and production code changed = fail | open |
-| H08 | 3 | major | INSTALL | base is the target tip, not the merge-base; CI artifacts count as changes (R1-3-03, R2-3-07, R3-3-04) | accept | recipe computes merge-base; reports written outside the checkout | open |
-| H09 | 3 | major | state.sh, genie.md | bootstrapped never true after G16; Genie re-runs bootstrap (R1-3-05) | accept | bootstrapped = index.json exists; Genie stops at the bootstrap PR | open |
-| H10 | 3 | major | cov_import | multi-module and container paths do not match (R3-3-01, R3-3-05) | accept | several reports merged; match by longest unique path suffix | open |
-| H11 | 3 | major | coverage | file types the tool never measures count as 0% (R3-3-06) | accept | count a missing file only when the report measures that extension | open |
-| H12 | 3 | major | diff_scope | '*.*' scan passes (R2-2-08 residue) | accept | a glob with no literal name part is too broad | open |
-| H13 | 3 | minor | tangle | kit/gates, kit/scripts, policy.yml not high-risk (R2-3-08) | accept | the enforcement code is high-risk at pin time | open |
-| H14 | 3 | minor | kitconst | *test.* matches Contest.php (R3-3-08) | accept | Test/Spec suffix matched case-sensitively on the file name | open |
-| H15 | 3 | minor | CLAUDE.md | 'raise freely' contradicts protected policy; CI note duplicated (R4-3-04, -05) | accept | reword; keep CI note in INSTALL only | open |
-| H16 | 3 | minor | router.md | hotfix fast-track and docs wording outdated (R1-3-07) | accept | match G23 and the gate table | open |
-| H17 | 3 | minor | spec_lint | '- Errors: none' fails (G21 residue) | accept | strip bullet | open |
+| H01 | 3 | blocker | INSTALL.md CI | RC-B overlay hides PR edits and runs PR-added kit files; pathspec fails when policy files are absent | accept | approved kit in its own worktree; --repo is the PR checkout; --base merge-base | fixed, pending pin |
+| H02 | 3 | blocker | coverage, gate_check | RC-C baseline_total and report path come from the PR (R2-3-03, R1-3-06, R3-3-02) | accept | --coverage-report (repeatable) and --baseline-report or --baseline-total flags only | fixed, pending pin |
+| H03 | 3 | blocker | coverage | pragma: no cover on added code passes (R2-3-04) | accept | coverage-ignore markers on added lines fail; coverage config files join PROTECTED | fixed, pending pin |
+| H04 | 3 | blocker | gate_check done | RC-D approved plan re-read from the PR (R2-3-06) | accept | owner chose two PRs: plan PR merged by a human = G1 approval; done reads the plan from the base commit (also closes G27) | fixed, pending pin |
+| H05 | 3 | blocker | new gate red_check | RC-E tests with no asserts pass all gates (R2-3-05) | accept | owner chose red_check: changed tests run against base production code in CI | fixed, pending pin |
+| H06 | 3 | major | gate_check | planted .pyc loaded by gate_check itself; zero gates ran and passed (R2-3-02, R2-2-04) | accept | set pycache prefix before imports; fail if a floor gate did not run; tangle --check and package reject __pycache__ | fixed, pending pin |
+| H07 | 3 | major | INSTALL, gate_check | no rule for the change name or PRs without a change folder (R1-3-04, R4-3-03) | accept | --change auto: one change folder from the diff; none and production code changed = fail | fixed, pending pin |
+| H08 | 3 | major | INSTALL | base is the target tip, not the merge-base; CI artifacts count as changes (R1-3-03, R2-3-07, R3-3-04) | accept | recipe computes merge-base; reports written outside the checkout | fixed, pending pin |
+| H09 | 3 | major | state.sh, genie.md | bootstrapped never true after G16; Genie re-runs bootstrap (R1-3-05) | accept | bootstrapped = index.json exists; Genie stops at the bootstrap PR | fixed, pending pin |
+| H10 | 3 | major | cov_import | multi-module and container paths do not match (R3-3-01, R3-3-05) | accept | several reports merged; match by longest unique path suffix | fixed, pending pin |
+| H11 | 3 | major | coverage | file types the tool never measures count as 0% (R3-3-06) | accept | count a missing file only when the report measures that extension | fixed, pending pin |
+| H12 | 3 | major | diff_scope | '*.*' scan passes (R2-2-08 residue) | accept | a glob with no literal name part is too broad | fixed, pending pin |
+| H13 | 3 | minor | tangle | kit/gates, kit/scripts, policy.yml not high-risk (R2-3-08) | accept | the enforcement code is high-risk at pin time | fixed, pending pin |
+| H14 | 3 | minor | kitconst | *test.* matches Contest.php (R3-3-08) | accept | Test/Spec suffix matched case-sensitively on the file name | fixed, pending pin |
+| H15 | 3 | minor | CLAUDE.md | 'raise freely' contradicts protected policy; CI note duplicated (R4-3-04, -05) | accept | reword; keep CI note in INSTALL only | fixed, pending pin |
+| H16 | 3 | minor | router.md | hotfix fast-track and docs wording outdated (R1-3-07) | accept | match G23 and the gate table | fixed, pending pin |
+| H17 | 3 | minor | spec_lint | '- Errors: none' fails (G21 residue) | accept | strip bullet | fixed, pending pin |
 | H18 | 3 | minor | coverage | mtime stale check can false-alarm after touch or rebase (R3-3-07, low confidence) | reject | CI writes fresh reports; the check only guards local runs | closed |
+
+Doc write-back added in round 3: section 10.2 #11 and 22.5 (G1 approval = merged plan PR; two PRs per change), section 10.4 #1 (red_check), section 10.6 (CI runs the approved kit from the target branch in its own worktree).

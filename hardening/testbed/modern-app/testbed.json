@@ -2,5 +2,8 @@
  "change_files": [
   "src/cart.py",
   "tests/test_cart.py"
- ]
+ ],
+ "coverage_report": "openspec/changes/CART-3-bulk-discount/evidence/coverage.xml",
+ "baseline_total": 88.0,
+ "test_cmd": "python3 -I -B -m unittest discover -s tests -p test_cart.py"
 }

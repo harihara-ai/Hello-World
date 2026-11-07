@@ -1,0 +1,14 @@
+{
+ "trap": 6,
+ "critical": true,
+ "title": "tests rewritten to assert nothing still name every requirement",
+ "run": "gate_check",
+ "stage": "done",
+ "change": "openspec/changes/CART-3-bulk-discount",
+ "expect_fail": [
+  "red_check"
+ ],
+ "expect_rules": {
+  "red_check": "tests_pass_on_base"
+ }
+}

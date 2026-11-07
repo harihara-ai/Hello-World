@@ -27,6 +27,19 @@ def git(tmp, *args):
                           capture_output=True, text=True, check=True).stdout.strip()
 
 
+def patch(tmp, patches):
+    for rel, pairs in patches.items():
+        path = os.path.join(tmp, rel)
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        for old, new in pairs:
+            if text.count(old) != 1:
+                raise ValueError("patch target must occur exactly once in %s: %r" % (rel, old[:60]))
+            text = text.replace(old, new)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text)
+
+
 def prepare(repo, case_dir, case, kit):
     tmp = os.path.join(tempfile.mkdtemp(prefix="trap-"), "repo")
     shutil.copytree(os.path.join(HERE, repo), tmp)
@@ -37,6 +50,7 @@ def prepare(repo, case_dir, case, kit):
     if not os.path.isfile(policy):
         os.makedirs(os.path.dirname(policy), exist_ok=True)
         shutil.copy(os.path.join(kit, "kit", "core", "policy.yml"), policy)
+    patch(tmp, case.get("patch_base", {}))  # the approved plan as merged before the change
     for rel in change_files:
         os.makedirs(os.path.dirname(os.path.join(aside, rel)), exist_ok=True)
         shutil.move(os.path.join(tmp, rel), os.path.join(aside, rel))
@@ -49,16 +63,7 @@ def prepare(repo, case_dir, case, kit):
     overlay = os.path.join(case_dir, "overlay")
     if os.path.isdir(overlay):
         shutil.copytree(overlay, tmp, dirs_exist_ok=True)
-    for rel, pairs in case.get("patch", {}).items():
-        path = os.path.join(tmp, rel)
-        with open(path, encoding="utf-8") as fh:
-            text = fh.read()
-        for old, new in pairs:
-            if text.count(old) != 1:
-                raise ValueError("patch target must occur exactly once in %s: %r" % (rel, old[:60]))
-            text = text.replace(old, new)
-        with open(path, "w", encoding="utf-8") as fh:
-            fh.write(text)
+    patch(tmp, case.get("patch", {}))
     for src, dst in case.get("move", []):
         os.makedirs(os.path.dirname(os.path.join(tmp, dst)), exist_ok=True)
         os.rename(os.path.join(tmp, src), os.path.join(tmp, dst))
@@ -74,10 +79,14 @@ def run_gate_check(tmp, case, kit):
     stages = ["ready", "done"] if case["stage"] == "both" else [case["stage"]]
     with open(os.path.join(os.path.dirname(tmp), "base")) as fh:
         base = fh.read().strip()
+    with open(os.path.join(tmp, "testbed.json"), encoding="utf-8") as fh:
+        tb = json.load(fh)
+    ci = ["--base", base, "--coverage-report", os.path.join(tmp, tb["coverage_report"]),
+          "--baseline-total", str(tb["baseline_total"]), "--test-cmd", tb["test_cmd"]]
     failed, found = [], {}
     for stage in stages:
         p = subprocess.run(PY + [os.path.join(kit, "kit/scripts/gate_check.py"), stage, "--repo", tmp,
-                                 "--change", case["change"], "--base", base], capture_output=True, text=True)
+                                 "--change", case["change"], *ci], capture_output=True, text=True)
         try:
             out = json.loads(p.stdout)
         except ValueError:

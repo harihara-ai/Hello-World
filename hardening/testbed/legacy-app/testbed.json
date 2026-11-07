@@ -2,5 +2,8 @@
  "change_files": [
   "src/LateFee.php",
   "tests/LateFeeTest.php"
- ]
+ ],
+ "coverage_report": "openspec/changes/INV-7-late-fee/evidence/coverage.xml",
+ "baseline_total": 41.0,
+ "test_cmd": "python3 -I -B tests/run_tests.py"
 }

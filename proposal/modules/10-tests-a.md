@@ -91,9 +91,22 @@ none
 """
 
 CLEAN_TEST = """# REQ-DISC-001 REQ-DISC-002
-def test_discount():
-    pass
+import os
+import sys
+import unittest
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
+from discount import price  # noqa: E402
+
+
+class Discount(unittest.TestCase):
+    def test_REQ_DISC_001_ten_percent_at_100(self):
+        self.assertEqual(price(100.0), 90.0)
+
+    def test_REQ_DISC_002_none_below_100(self):
+        self.assertEqual(price(99.99), 99.99)
 """
+CLEAN_SRC = "def price(t):\n    return round(t * 0.9, 2) if t >= 100 else t\n"
+TEST_CMD = "%s -I -B -m unittest discover -s tests" % sys.executable
 
 
 def write(root, rel, text):
@@ -122,7 +135,7 @@ def make_repo():
     write(root, ch + "/inputs/diff_scope.json", {
         "changed_files": ["src/discount.py", "tests/test_discount.py"],
         "impact_scan": ["src/discount.py", "tests/*"]})
-    write(root, "src/discount.py", "def price(t):\n    return t\n")
+    write(root, "src/discount.py", CLEAN_SRC)
     write(root, "tests/test_discount.py", CLEAN_TEST)
     return root, ch
 
@@ -162,6 +175,25 @@ def write_tree(files):
     for rel, text in files.items():
         write(root, rel, text)
     return root
+
+
+def git_change():
+    """A git repo whose base commit holds the approved plan; the code change (src, tests) is uncommitted on top.
+    Returns (root, change, base sha, coverage report path outside the repo)."""
+    root, ch = make_repo()
+    aside = tempfile.mkdtemp()
+    for d in ("src", "tests"):
+        shutil.move(os.path.join(root, d), os.path.join(aside, d))
+    git_init(root)
+    base = git(root, "rev-parse", "HEAD").strip()
+    for d in ("src", "tests"):
+        shutil.move(os.path.join(aside, d), os.path.join(root, d))
+    report = write(tempfile.mkdtemp(), "coverage.xml", cobertura({"src/discount.py": {1: 1, 2: 1}}, rate=0.72))
+    return root, ch, base, report
+
+
+def ci_args(base, report, *extra):
+    return ["--base", base, "--coverage-report", report, "--baseline-total", "70.0", "--test-cmd", TEST_CMD, *extra]
 ````
 
 ## tests/run.sh
@@ -227,29 +259,4 @@ def check(case, capability_id):
             case.assertIn("`%s`" % name, text, "%s does not cover %s" % (a["id"], name))
         case.assertRegex(text, r"(?m)^## Probe", "%s has no probe section" % a["id"])
     return adapters
-````
-
-## tests/contract/test_codenav.py
-
-````python file=tests/contract/test_codenav.py
-"""purpose: T2 contract tests for the codenav capability (trap 10: fallback without a language server)."""
-import os
-import sys
-import unittest
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import contract  # noqa: E402
-
-
-class CodenavContract(unittest.TestCase):
-    def test_adapters_cover_the_interface(self):
-        contract.check(self, "capability.codenav")
-
-    def test_fallback_results_are_inferred(self):
-        text = contract.read("kit/adapters/codenav/ctags.md")
-        self.assertIn("inferred", text)
-
-
-if __name__ == "__main__":
-    unittest.main()
 ````

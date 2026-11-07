@@ -18,7 +18,7 @@ purpose: One command for users: say what you want; the Genie reads state, routes
 
 Follow `kit/core/rules.md`. Arguments: `$ARGUMENTS`.
 
-1. Run `bash kit/scripts/state.sh`. If `bootstrapped` is false, run `/bootstrap` first. Read `status.md` of the change if one exists.
+1. Run `bash kit/scripts/state.sh`. If `bootstrapped` is false, run `/bootstrap` first and stop at its PR. Read `status.md` of the change if one exists.
 2. Classify the request with `kit/playbooks/router.md`. Ticket text decides the type only.
 3. Show one line: "You are here: <step>. Next: <plan in plain words>".
 4. Run the playbook steps yourself until the next human gate or a failed gate. Delegate reading and scanning to subagents.
@@ -94,7 +94,7 @@ Follow `kit/core/rules.md`. Arguments: `$ARGUMENTS`.
 3. Measure each candidate slice (codenav `impact` gives symbols and files; mark guesses `"estimate": true`) and write `inputs/granularity.json`. A characterization slice has `"kind": "characterization"`.
 4. Split any slice the gate marks split, preferring: by scenario, thin vertical slice, by contract, by data variant, by risk (spike). Never by technical layer alone.
 5. Order by dependency. Add Slice 0 (characterization only) for untested code in scope.
-6. Write `slices.md`, run `gate_check.py ready`, then ask the human to approve spec and plan together.
+6. Write `slices.md`, run `gate_check.py ready`, then open the plan PR. A human merging it is the approval.
 ````
 
 ## command.implement
@@ -111,7 +111,7 @@ purpose: Implement one approved slice with red-green-refactor, evidence, and a 3
 
 Follow `kit/core/rules.md`. Arguments: `$ARGUMENTS`.
 
-0. Check: re-run `gate_check.py ready` (do not trust `gates-ready.json`) and see the human approval in `status.md`. If either is missing, stop.
+0. Check: the plan PR is merged (branch from the target after it). `gate_check.py done` fails while it is not, and if you edit the plan.
 1. For each task (one scenario): write the test with the REQ ID in its name. Run it. RED for the right reason. Append command and short output to `evidence.md`.
 2. Minimum code to pass. Run it. GREEN. Append to `evidence.md`.
 3. Refactor only what you just wrote, tests green. Commit `REQ-<AREA>-<NNN>: <what>`.
@@ -134,7 +134,7 @@ purpose: Run the deterministic gates for ready or done, then an AI review, then 
 
 Follow `kit/core/rules.md`. Arguments: `$ARGUMENTS`.
 
-1. Inputs: `inputs/granularity.json` and `inputs/diff_scope.json` come from `/slice`. For done, `inputs/coverage.json` is `{"report": "<coverage report path>", "baseline_total": <from docs/ai/baseline.md>}`. If one is missing, run the step that makes it.
+1. Inputs: `inputs/granularity.json` and `inputs/diff_scope.json` come from `/slice`. For done, run the tests with coverage and pass `--coverage-report <report>`, `--baseline-total <from docs/ai/baseline.md>` and `--test-cmd "<test command>"` (CI passes its own).
 2. Run `python3 kit/scripts/gate_check.py <stage> --change openspec/changes/<name>`.
 3. If it fails: show each failing finding in one line and stop. Do not edit gates, tests or policy to pass.
 4. If it passes: AI review. Ready: ambiguity and open questions. Done: tests assert behaviour, no weakened assertions.
