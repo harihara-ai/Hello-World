@@ -10,7 +10,8 @@ purpose: where the North Star kit stands, the resume prompt for a new session, a
 - Spec `proposal/north-star-v2.md` synced with the kit.
 - Session B (hosted CI trial) ran on `trial-main`: PRs #1-#11, `hardening/evidence/hosted-ci.md`. New blocker N01
   (a PR edits the workflow to fake the `gate` check; mergeable when the author is the only code owner). Fix (b) run
-  (CI from master via pull_request_target; w1b, w2 blocked) and pinned; package 1.0.3. Fix (a) (AI's own account) open.
+  (CI from master via pull_request_target; w1b, w2 blocked) and pinned; package 1.0.3. Fix (a) dropped by the owner (B2);
+  B3 pinned the INSTALL edit, package 1.0.4; #3 merge, baseline run and both rulesets read.
 - Branch `ccr-25d09baa-rmhk7r`. State: `hardening/state.md`. Ledger: `hardening/findings.md`. Pack: `hardening/evidence/EVIDENCE.md`.
 
 ## Resume prompt (paste into a new Claude Code session in this repo)
@@ -45,7 +46,8 @@ Start with item 1 and stop when it is done.
   for the bot was refused by the session (github.com uses the GitHub connection only). Owner linked Claude's GitHub to
   harihara-ai-bot (2026-11-07); the old session's GitHub tools then failed (`invalid session`): start B2 fresh. Owner: rulesets per part 4 of
   session B (block force pushes on trial-main; master ruleset; admin bypass for PRs only). Append to `evidence/hosted-ci.md`.
-- **B3. Close B2** (after the owner relinks Claude's GitHub to harihara-ai; the bot is dropped). Push the B2 commit;
+- **B3. Close B2**. Done (`evidence/hosted-ci.md`, B3). Open: owner deletes branch `trial/w1-bot` (hidden PR #17;
+  push refused here). Was: (after the owner relinks Claude's GitHub to harihara-ai; the bot is dropped). Push the B2 commit;
   read #17's checks, close it unmerged; read #3's merge, the next baseline run and both rulesets; tangle the INSTALL
   edit (N01 a dropped), show the pin diff, pin on the owner's yes, rebuild the package. Append to `evidence/hosted-ci.md`.
 - **C. Pilot** per the Gold plan, with item 2 (diff-scoped mutation testing) set up per stack.
@@ -70,9 +72,9 @@ Pre-pilot items done (1, 1b, 1c, 3, 4, 5). Do 2 while setting the pilot up. Leav
 | --- | --- | --- |
 | CI recipe on a hosted CI: run on GitHub Actions (`evidence/hosted-ci.md`); holds for plan, clean, t2-t4, d1, f1, failing tests, w1b, w2 | - | closed for GitHub-hosted Python; other hosts and stacks per pilot |
 | N01 (a) dropped (owner, B2): accepted limit; the AI acts through the owner's account, so "only a human merges" is a rule, not enforced | an AI merge looks like the owner's | accepted; gate protected_path and CI from master stay |
-| Master ruleset added by the owner (B2), not read via API; no bot PR to master tried | CI rewritten outside review | B3 |
+| Master ruleset read (B3: PR, 1 approval, no force push, no deletion); bypass actors not read; no PR or push to master tried | CI rewritten outside review | pilot setup |
 | pull_request_target: PR tests run with a read-only token; cache or token abuse not tried | base-branch cache poisoning | pilot setup |
-| Force-push block (owner set it, B2) and PR #3 merge (owner did it) not read; next baseline run not read | baseline chain untested past one merge | B3 |
+| Force-push block read in both rulesets (B3), not tried; #3 merge `0118cb3` and its baseline run read (success) | - | closed for one merge |
 | Self-hosted runner reuse between jobs | M01 returns on a persistent runner | pilot setup, if a pilot repo uses one |
 | Test tools installed "as ../approved declares them" (npm, Maven, Composer) | PR install scripts run before the gate | pilot setup, per stack |
 | Coverage forging on PHP, Java, .NET, JS stacks; COVERAGE_API patterns untested there | coverage gate open on those stacks | pilot, per stack |

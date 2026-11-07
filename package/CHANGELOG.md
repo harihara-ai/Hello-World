@@ -2,6 +2,12 @@
 
 purpose: what changed in the North Star kit, by phase and hardening round.
 
+## 1.0.4-silver-synthetic (2026-11-07)
+- **N01 fix (a) dropped (owner, session B2):** no separate AI account. INSTALL: code-owner review on the target branch,
+  a ruleset (PR required, no force push) on the branch holding the CI file; only a human merges. Through a code owner's
+  account the host asks no review, so the gate's `protected_path` rule stops an AI CI or kit edit (accepted limit).
+- **Re-check:** forge 30, unit 170, contract 5, mutation 14 OK; run_traps (1 run) 22/22, 0 false alarms.
+
 ## 1.0.3-silver-synthetic (2026-11-07)
 - **N01 (hosted CI trial, session B):** a PR could edit the GitHub workflow and fake the required `gate` check; code-owner
   review is not asked when the PR author is the code owner. INSTALL: CI jobs come from a protected branch (GitHub:

@@ -15,8 +15,9 @@ Put every pattern in `PROTECTED` in `kit/scripts/kitconst.py` into `CODEOWNERS`.
 `gate.diff_scope` refuses in an AI change; CODEOWNERS stops the same change arriving another way.
 Also list the build files that can hold coverage or test settings: `pyproject.toml`, `setup.cfg`, `tox.ini`, `pom.xml`,
 `build.gradle*`, `package.json`, `*.csproj`. They are not in `PROTECTED` (a change may need them), so a human reviews each change.
-Require code-owner review on the target branch. The AI opens PRs from its own account, never a code owner's: the
-host does not ask a code owner to review their own PR, so a CI or kit edit would merge unreviewed.
+Require code-owner review on the target branch, and a ruleset (PR required, no force push) on the branch that holds
+the CI file. Only a human merges; the AI never approves or merges. If the AI works through a code owner's account, the
+host asks no review of that owner's own PR: then the gate's `protected_path` rule is what stops an AI CI or kit edit.
 
 ## Two PRs per change
 1. Plan PR: `spec.md`, `slices.md`, `inputs/diff_scope.json`, `inputs/granularity.json`, never `evidence.md` (it marks

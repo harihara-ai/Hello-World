@@ -130,3 +130,8 @@ Baseline chain holds past one merge. Force-push block on both branches confirmed
 Not run: a push or PR to master under its ruleset; #17's gate; owner approving a non-owner PR.
 INSTALL edit (N01 a dropped) tangled in scratch: `PINNED 70 files. added=0 changed=1 removed=0`, `kit/INSTALL.md
 HIGH-RISK`, lock `43107b55...` to `2fd5ec19...`; INSTALL 66 lines; lint 49 clean. Pin awaits the owner.
+PINNED (owner "yes"): changed=1 (`kit/INSTALL.md`, high-risk), kit.lock to `2fd5ec19...`. After the pin: tangle 70; lint
+49 clean; selftest lock match, forge 30, unit 170, contract 5, mutation 14 OK; run_traps (1 run) 22/22, critical 17/17,
+other 5/5, false alarms 0. Package 1.0.4 (`package.md`).
+#17: owner said delete `trial/w1-bot`; `git push --delete` refused (HTTP 403, this session may push only its own
+branch). Still open: the owner deletes the branch in the phone browser (Branches page), which closes #17.

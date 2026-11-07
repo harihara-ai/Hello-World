@@ -27,3 +27,8 @@ purpose: phase 6 package build and its verification (2026-11-07).
 - Built: `bash forge/forge.sh package` -> dist/northstar-kit.zip, 164585 bytes, 167 entries, sha256 1dbf3bdd...;
   dist/northstar-kit-install.zip, 57055 bytes, 58 entries, sha256 2ff6b3e8... (INSTALL holds the N01 lines).
 - Not run: unzip of 1.0.3 into trial-main (it runs 1.0.2; only INSTALL prose differs).
+
+## Rebuild 1.0.4 (2026-11-07, N01 fix a dropped)
+- Built: `bash forge/forge.sh package` -> dist/northstar-kit.zip, 166431 bytes, 167 entries, sha256 2871a975...;
+  dist/northstar-kit-install.zip, 57109 bytes, 58 entries, sha256 d91404f4... (INSTALL holds "Only a human merges").
+- Not run: unzip of 1.0.4 into trial-main (it runs 1.0.2; only INSTALL prose differs).
