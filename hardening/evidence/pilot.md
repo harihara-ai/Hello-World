@@ -15,6 +15,13 @@ Repos (owner choice): legacy `harihara-ai/commons-lang` (Java, Maven, JaCoCo, PI
   'kit/templates/scenario.feature']". No CI run on koa#1 (workflow not on master yet), so it does not block the
   install; it would block an upgrade PR (finding P01 below).
 
+- Owner merged koa#1 (`e6f68d6`). Push run 42382537286: `baseline` success, artifact `coverage-baseline` (lcov).
+  Owner added the master ruleset; read via `rules/branches/master`: deletion, non_fast_forward, pull_request
+  (code-owner review, 0 approvals), required checks `tests`, `gate`.
+- `/bootstrap` (hand-run from `.claude/commands/bootstrap.md`): ctags installed with the owner's OK (codenav ctags,
+  Serena not installed); tracker file (owner choice; Issues off). Tests with `dist/` built: 440 pass; lines 99.9%,
+  branches 99.09%. Local gate: pass, "no change folder: only docs or human-owned files changed". PR koa#2.
+
 ## Findings
 ```
 id: P01
