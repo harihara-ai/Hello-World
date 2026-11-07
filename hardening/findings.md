@@ -177,11 +177,12 @@ Hardening stopped at the round cap (6) with the items below open. Stop rule (2 c
 
 | id | round | severity | location | problem | decision | reason | status |
 |---|---|---|---|---|---|---|---|
-| L01 | 6 | blocker | diff_scope | non-code files in the change folder still run (pytest collects test*.txt doctests) (R2-6-01) | accept | allowlist in kitconst.CHANGE_FOLDER_FILES; test bed case 21 | fixed after cap, pinned (not swarm-reviewed) |
-| L02 | 6 | blocker | INSTALL CI recipe | the PR's tests run after the approved worktree exists and can rewrite the approved kit (R2-6-02) | accept | INSTALL: tests run first, worktree created after them, set -e | fixed after cap, pinned (not swarm-reviewed) |
-| L03 | 6 | blocker | INSTALL | coverage.py's .coverage data file lands in the checkout and fails diff_scope on every PR (R5-6-01) | accept | COVERAGE_FILE outside the checkout; .coverage in .gitignore | fixed after cap, pinned (not swarm-reviewed) |
-| L04 | 6 | major | playbooks/spike.md | spike mixes spec and findings in one PR; fails CI (R1-6-01) | accept | docs-only findings PR route | fixed after cap, pinned (not swarm-reviewed) |
+| L01 | 6 | blocker | diff_scope | non-code files in the change folder still run (pytest collects test*.txt doctests) (R2-6-01) | accept | allowlist in kitconst.CHANGE_FOLDER_FILES; test bed case 21 | fixed after cap, pinned; R2/R5 check holds (evidence/after-cap-check.md) |
+| L02 | 6 | blocker | INSTALL CI recipe | the PR's tests run after the approved worktree exists and can rewrite the approved kit (R2-6-02) | accept | INSTALL: tests run first, worktree created after them, set -e | fixed in part: own attack blocked; bypassed via planted git hook or config (M01) |
+| L03 | 6 | blocker | INSTALL | coverage.py's .coverage data file lands in the checkout and fails diff_scope on every PR (R5-6-01) | accept | COVERAGE_FILE outside the checkout; .coverage in .gitignore | fixed after cap, pinned; R5 walk-through holds |
+| L04 | 6 | major | playbooks/spike.md | spike mixes spec and findings in one PR; fails CI (R1-6-01) | accept | docs-only findings PR route | fixed after cap, pinned; R5 walk-through holds |
 | L05 | 6 | blocker | red_check, coverage | tests that run new code but assert nothing pass (R5-6-02) | limit | same root cause as accepted limit J04 | closed (limit J04) |
 | L06 | 6 | minor | INSTALL, trace_check | test step result not enforced by the gate; flaky baseline; orphan_id warnings pile up; Delphi {tests} example; untracked helpers removed during base run (R1 N1-N3, R3-6-01..03, R4 minors, R5-6-03) | open | wording and small fixes | open (cap) |
+| M01 | after-cap check | blocker | INSTALL CI recipe | the PR's test step plants a git hook or git config (repo or ~/.gitconfig) that rewrites the approved kit at `git worktree add` or at gate_check's git calls (t2-t4) | accept | two jobs: tests in one, gate job on a fresh runner runs no PR code before gate_check (R2-6-02's own proposal) | open (fix plan item 1b) |
 
 Doc write-back done (2026-11-07, owner go-ahead): proposal/north-star-v2.md sections 3, 8, 10.2 #11, 10.4 #1, 10.6, 11.2 step 7, 11.3 and 22.4 now match the kit. The round 3 note's '22.5' was misplaced: the two-PR flow went into 10.2 and 11.2 instead. Round 4 cuts changed no spec promise.

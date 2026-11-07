@@ -4,7 +4,8 @@ purpose: where the North Star kit stands, the resume prompt for a new session, a
 
 ## Where it stands (2026-11-07)
 - Phases 0-6 done. Package `dist/northstar-kit.zip`, label "Silver on the synthetic test bed", accepted with conditions.
-- Hardening stopped at the round cap (6). L01-L04 fixed after the cap, pinned, not swarm-reviewed.
+- Hardening stopped at the round cap (6). L01-L04 fixed after the cap and pinned. Item 1 check done
+  (`hardening/evidence/after-cap-check.md`): L01, L03, L04 hold; L02 bypassed, new blocker M01 (item 1b).
 - Spec `proposal/north-star-v2.md` synced with the kit.
 - Branch `ccr-25d09baa-rmhk7r`. State: `hardening/state.md`. Ledger: `hardening/findings.md`. Pack: `hardening/evidence/EVIDENCE.md`.
 
@@ -28,7 +29,8 @@ Start with item 1 and stop when it is done.
 ## Fix plan for the known issues (value first, effort second)
 | # | Issue | Fix | Value | Effort |
 | --- | --- | --- | --- | --- |
-| 1 | L01-L04 fixed after the cap, never reviewed | One short check: R2 and R5 only, re-run their round 6 attacks and the INSTALL walk-through. No full round | High: closes the only unreviewed blockers | Low (one session) |
+| 1 | done: L01-L04 fixed after the cap, never reviewed | One short check: R2 and R5 only, re-run their round 6 attacks and the INSTALL walk-through. No full round | High: closes the only unreviewed blockers | Low (one session) |
+| 1b | M01: PR tests plant a git hook or config that rewrites the approved kit (t2-t4) | INSTALL only: tests in one job, gate in a second job on a fresh runner that runs no PR code before gate_check. Pin needs a human | High: a blocker | Low (one INSTALL edit, re-run t2-t4) |
 | 2 | J04, J05: weak tests for new code, weakened edited tests | No new gate. In the pilot CI, run diff-scoped mutation testing on changed lines (mutmut, Stryker, PIT or Infection with a since-base option) for Tier 1 modules; report the score in the PR | High: the only real control for the top risk | Medium (CI step per stack) |
 | 3 | J06: coverage exclusions in build files | No new gate. Add `pyproject.toml`, `pom.xml`, `build.gradle`, `package.json`, `*.csproj` to CODEOWNERS in INSTALL so a human always reviews them | Medium | Very low (one INSTALL line) |
 | 4 | L06 minor wording, orphan_id noise, Delphi `{tests}` example | One small batch | Low-medium: removes friction for pilot teams | Low |
@@ -36,7 +38,7 @@ Start with item 1 and stop when it is done.
 | 6 | F17: slice sizes are estimates | Wait for pilot metrics; if slices overrun, derive `files` from the impact scan | Low until data shows it | Deferred |
 | 7 | G19: unrequested function inside an in-scope file | Wait; AI review covers it; revisit only if the pilot shows escapes | Low until data shows it | Deferred |
 
-Do 1, 3 and 4 before the pilot (about one session). Do 2 and 5 while setting the pilot up. Leave 6 and 7 to pilot data.
+Do 1, 1b, 3 and 4 before the pilot (about one session). Do 2 and 5 while setting the pilot up. Leave 6 and 7 to pilot data.
 
 ## Gold plan (spec 21.3: Silver plus T7 on two real repos and four weeks of use)
 1. **Pick two repos:** one legacy (PHP, .NET, Java or Delphi) and one modern, each with an owner who will review PRs.
