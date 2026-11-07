@@ -1,0 +1,20 @@
+# purpose: default floor thresholds; repos may raise them, lowering needs a recorded human sign-off.
+# Prefix rule (read by gate.policy_guard): min_* may only go up, max_* may only go down,
+# list values may only grow. A human may copy this to docs/ai/policy.yml to raise values; without it the floor applies.
+# Lowering a value needs docs/ai/policy-signoff.json, merged by a human before the change, for example:
+#   {"approved_by": "Dana Lee", "reason": "legacy module, ADR-7", "keys": {"min_changed_line_coverage": 60}}
+version: 1
+min_changed_line_coverage: 80
+max_total_drop: 0.1
+max_slice_scenarios: [3, 5]
+max_slice_modules: [1, 2]
+max_slice_contracts: [0, 1]
+max_slice_symbols: [8, 15]
+max_slice_lines: [150, 300]
+max_slice_files: [8, 15]
+max_task_attempts: 3
+max_spec_lines: 300
+min_flaky_runs: 3
+banned_words: [fast, easy, user-friendly, secure, robust, simple, quick, intuitive, scalable, flexible]
+ready_gates: [injection, policy_guard, spec_lint, granularity, diff_scope]
+done_gates: [injection, policy_guard, trace_check, coverage, diff_scope, red_check]

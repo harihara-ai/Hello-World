@@ -1,0 +1,209 @@
+# purpose: registry of every kit component; kit_lint checks it.
+- id: core.claude
+  type: core
+  path: kit/CLAUDE.md
+  needs: []
+- id: core.rules
+  type: core
+  path: kit/core/rules.md
+  needs: []
+- id: core.glossary
+  type: core
+  path: kit/core/glossary.md
+  needs: []
+- id: core.state
+  type: core
+  path: kit/core/state.md
+  needs: []
+- id: core.policy
+  type: core
+  path: kit/core/policy.yml
+  needs: []
+- id: core.install
+  type: core
+  path: kit/INSTALL.md
+  needs: []
+- id: capability.tracker
+  type: capability
+  path: kit/capabilities/tracker.md
+  needs: [core.state]
+- id: capability.codenav
+  type: capability
+  path: kit/capabilities/codenav.md
+  needs: [core.state]
+- id: adapter.tracker.github
+  type: adapter
+  path: kit/adapters/tracker/github.md
+  implements: capability.tracker
+  needs: [core.state]
+  tests: [tests/contract/test_tracker.py]
+- id: adapter.tracker.jira
+  type: adapter
+  path: kit/adapters/tracker/jira.md
+  implements: capability.tracker
+  needs: [core.state]
+  tests: [tests/contract/test_tracker.py]
+- id: adapter.tracker.azdo
+  type: adapter
+  path: kit/adapters/tracker/azdo.md
+  implements: capability.tracker
+  needs: [core.state]
+  tests: [tests/contract/test_tracker.py]
+- id: adapter.tracker.file
+  type: adapter
+  path: kit/adapters/tracker/file.md
+  implements: capability.tracker
+  needs: [core.state]
+  tests: [tests/contract/test_tracker.py]
+- id: adapter.codenav.serena
+  type: adapter
+  path: kit/adapters/codenav/serena.md
+  implements: capability.codenav
+  needs: [core.state]
+  tests: [tests/contract/test_codenav.py]
+- id: adapter.codenav.ctags
+  type: adapter
+  path: kit/adapters/codenav/ctags.md
+  implements: capability.codenav
+  needs: [core.state]
+  tests: [tests/contract/test_codenav.py]
+- id: gate.spec_lint
+  type: gate
+  path: kit/gates/spec_lint.py
+  needs: [script.gateio, core.policy, script.kitconst]
+- id: gate.granularity
+  type: gate
+  path: kit/gates/granularity.py
+  needs: [script.gateio, core.policy]
+- id: gate.injection
+  type: gate
+  path: kit/gates/injection.py
+  needs: [script.gateio, core.rules]
+- id: gate.trace
+  type: gate
+  path: kit/gates/trace_check.py
+  needs: [script.gateio, core.policy, script.kitconst]
+- id: gate.coverage
+  type: gate
+  path: kit/gates/coverage.py
+  needs: [script.gateio, core.policy, script.kitconst, script.cov_import]
+- id: gate.diff_scope
+  type: gate
+  path: kit/gates/diff_scope.py
+  needs: [script.gateio, core.policy, script.kitconst]
+- id: gate.policy_guard
+  type: gate
+  path: kit/gates/policy_guard.py
+  needs: [script.gateio, script.policy, core.policy]
+- id: gate.flaky
+  type: gate
+  path: kit/gates/flaky.py
+  needs: [script.gateio, core.policy]
+- id: gate.red_check
+  type: gate
+  path: kit/gates/red_check.py
+  needs: [script.gateio, core.policy, script.kitconst]
+- id: script.gateio
+  type: script
+  path: kit/scripts/gateio.py
+  needs: [core.rules]
+- id: script.kitconst
+  type: script
+  path: kit/scripts/kitconst.py
+  needs: [core.rules]
+- id: script.cov_import
+  type: script
+  path: kit/scripts/cov_import.py
+  needs: [core.rules]
+- id: script.policy
+  type: script
+  path: kit/scripts/policy.py
+  needs: [core.policy]
+- id: script.changectx
+  type: script
+  path: kit/scripts/changectx.py
+  needs: [core.rules]
+- id: script.gate_check
+  type: script
+  path: kit/scripts/gate_check.py
+  needs: [script.policy, script.kitconst, script.changectx, core.policy]
+- id: script.state
+  type: script
+  path: kit/scripts/state.sh
+  needs: [core.state]
+- id: script.probe
+  type: script
+  path: kit/scripts/probe.py
+  needs: [script.gateio, core.state]
+- id: playbook.router
+  type: playbook
+  path: kit/playbooks/router.md
+  needs: [capability.tracker, core.rules]
+- id: playbook.story
+  type: playbook
+  path: kit/playbooks/story.md
+  needs: [capability.tracker, capability.codenav, gate.spec_lint, gate.granularity, script.gate_check, core.rules]
+- id: playbook.bug
+  type: playbook
+  path: kit/playbooks/bug.md
+  needs: [capability.tracker, gate.trace, script.gate_check, core.rules]
+- id: playbook.no_behaviour_change
+  type: playbook
+  path: kit/playbooks/no-behaviour-change.md
+  needs: [gate.diff_scope, script.gate_check, core.rules]
+- id: playbook.safety_net
+  type: playbook
+  path: kit/playbooks/safety-net.md
+  needs: [gate.flaky, gate.diff_scope, script.gate_check, core.rules]
+- id: playbook.spike
+  type: playbook
+  path: kit/playbooks/spike.md
+  needs: [gate.diff_scope, core.rules]
+- id: command.genie
+  type: command
+  path: kit/.claude/commands/genie.md
+  needs: [playbook.router, core.rules]
+- id: command.bootstrap
+  type: command
+  path: kit/.claude/commands/bootstrap.md
+  needs: [playbook.router, core.state]
+- id: command.learn
+  type: command
+  path: kit/.claude/commands/learn.md
+  needs: [playbook.router, core.state]
+- id: command.slice
+  type: command
+  path: kit/.claude/commands/slice.md
+  needs: [playbook.story, core.state]
+- id: command.implement
+  type: command
+  path: kit/.claude/commands/implement.md
+  needs: [playbook.story, core.rules]
+- id: command.gate
+  type: command
+  path: kit/.claude/commands/gate.md
+  needs: [playbook.story, core.rules]
+- id: command.safety_net
+  type: command
+  path: kit/.claude/commands/safety-net.md
+  needs: [playbook.safety_net, core.rules]
+- id: command.refresh
+  type: command
+  path: kit/.claude/commands/refresh.md
+  needs: [playbook.router, core.state]
+- id: template.spec
+  type: template
+  path: kit/templates/spec.md
+  needs: [core.glossary]
+- id: template.feature
+  type: template
+  path: kit/templates/scenario.feature
+  needs: [core.glossary]
+- id: template.ticket
+  type: template
+  path: kit/templates/ticket.md
+  needs: [core.glossary]
+- id: template.pr
+  type: template
+  path: kit/templates/pr.md
+  needs: [core.glossary]

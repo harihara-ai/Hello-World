@@ -1,0 +1,4 @@
+__pycache__/
+.coverage
+openspec/changes/*/gates-*.json
+.pytest_cache/
