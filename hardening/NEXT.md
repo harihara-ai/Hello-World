@@ -31,9 +31,11 @@ Start with item 1 and stop when it is done.
 - **A. Item 5** (install by unzip). Prompt: as the resume prompt above, with "Task: fix plan item 5 (G24): forge.sh
   package also builds an install zip with repo-root paths (kit/, kit.manifest.yml, .claude/commands/); never overwrite a
   target CLAUDE.md; shorten INSTALL Files; tests first; stop for the pin; rebuild the package."
-- **B. Hosted CI trial** (after A). Needs an empty private repo (e.g. harihara-ai/northstar-ci-trial) attached to the
-  session, and the owner to turn on branch protection when asked. Install per INSTALL, two-job GitHub Actions workflow,
-  real PRs: plan, clean code, t2, t3, t4, d1, f1, f2 (expected pass), failing tests. Evidence: hardening/evidence/hosted-ci.md.
+- **B. Hosted CI trial** (after A). Owner works only from the Claude Android app: no laptop, no commands; short messages.
+  Target: orphan branch `trial-main` in harihara-ai/Hello-World (no new repo). Install per INSTALL; two-job GitHub
+  Actions workflow on PRs to trial-main; owner adds a branch ruleset (PR, checks tests and gate, code-owner review) in
+  the phone browser when asked. Real PRs: plan, clean code, t2, t3, t4, d1, f1, f2 (expected pass), failing tests, and
+  w1 (PR edits the workflow to skip the gate; must not be mergeable). Evidence: hardening/evidence/hosted-ci.md.
 - **C. Pilot** per the Gold plan, with item 2 (diff-scoped mutation testing) set up per stack.
 
 ## Fix plan for the known issues (value first, effort second)
