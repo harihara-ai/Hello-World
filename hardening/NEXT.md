@@ -14,6 +14,9 @@ purpose: where the North Star kit stands, the resume prompt for a new session, a
   B3 pinned the INSTALL edit, package 1.0.4; #3 merge, baseline run and both rulesets read.
 - Branch `ccr-25d09baa-rmhk7r`. State: `hardening/state.md`. Ledger: `hardening/findings.md`. Pack: `hardening/evidence/EVIDENCE.md`.
 
+**New direction (2026-11-07): `hardening/DIRECTION.md`** (scale ladder S1-S6, debt repos, reliability proof,
+autonomous server, price). It sets the next sessions; the Gold plan below stays the certification target.
+
 ## Resume prompt (paste into a new Claude Code session in this repo)
 ```
 First run: git fetch origin ccr-25d09baa-rmhk7r && git checkout ccr-25d09baa-rmhk7r
