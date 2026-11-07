@@ -1,6 +1,6 @@
 # North Star kit CI (kit/INSTALL.md "CI is the gate that counts"). High-risk: a human reviews every change.
-# pull_request_target: GitHub runs this file as it is on trial-main, so a PR cannot change the jobs (N01).
-# PR code runs with a read-only token, no secrets and no cache restore; never add either here.
+# PR jobs (tests, gate) run from the copy on the default branch (master): pull_request_target reads it there (N01).
+# This copy on trial-main serves the push baseline job. PR code: read-only token, no secrets, no cache restore.
 name: northstar-ci
 on:
   pull_request_target:
