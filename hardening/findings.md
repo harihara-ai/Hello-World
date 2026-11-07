@@ -114,3 +114,42 @@ Root causes:
 | H18 | 3 | minor | coverage | mtime stale check can false-alarm after touch or rebase (R3-3-07, low confidence) | reject | CI writes fresh reports; the check only guards local runs | closed |
 
 Doc write-back added in round 3: section 10.2 #11 and 22.5 (G1 approval = merged plan PR; two PRs per change), section 10.4 #1 (red_check), section 10.6 (CI runs the approved kit from the target branch in its own worktree).
+
+Round 4 (frozen 7ce6a0a; brief: prefer cuts). Raw: R1 6 (2 blockers) + 3 cuts, R2 6 (4), R3 6 (1) + 3 cuts, R4 weight audit 8 (0), R5 2 (1); 8 blockers.
+Round 3 fixes re-checked: R1 6/6 hold, R2 6/8 attacks closed, R3 3 hold and 3 in part, R4 H09 holds and H15 in part, R5 20/20 x5, CI block 1.1 s.
+Weight audit: 22 concepts (user 7, lead +9, Genie-only 6); 3 human actions per story; CI setup about 15 steps.
+Root causes:
+- RC-F: the PR picks which checks it gets (which stage, which plan, whether a change folder is needed) (R1-4-01/02, R2-4-03/04, R5-4-01, R4-4-02).
+  Fix that also removes steps: gate_check infers the stage from git; a plan PR may change only its change folder; the code PR records evidence.md, and a plan with evidence.md already in the base cannot be reused.
+- RC-G: red_check cannot tell why the base run failed (R3-4-01, R2-4-01). Fix the cheap, real part: run base code in the CI checkout itself (deps present), treat a runner that cannot start as an error, optional {tests}.
+  Known limit, not closed by more machinery: tests for brand-new code are only proven to touch it.
+Limits of the floor, left to AI test review (spec 10.4 #10, type A), human PR review and the ceiling (mutation testing):
+tests for new code that assert little (R2-4-01, R2-3-05), weakened assertions in existing tests (R2-4-02), coverage config inside general build files (R2-4-05).
+
+| id | round | severity | location | problem | decision | reason | status |
+|---|---|---|---|---|---|---|---|
+| J01 | 4 | blocker | gate_check, INSTALL | RC-F stage, plan reuse and folder choice are up to the PR (R1-4-01, R2-4-03, R2-4-04, R5-4-01) | accept | stage auto from git; plan PR may touch only its folder; done needs evidence.md new in this PR | open |
+| J02 | 4 | blocker | gate_check | no change folder passes when only tests changed (R1-4-02) | accept | the no-folder pass covers only protected files and docs | open |
+| J03 | 4 | blocker | red_check | a runner that cannot start in the base worktree counts as red (R3-4-01) | accept | base code is restored inside the checkout (no worktree); exit 126, 127 or timeout is an error | open |
+| J04 | 4 | blocker | red_check | tests for new code pass red_check by failing to load on base (R2-4-01, R2-3-05) | reject | needs per-test JUnit parsing; known limit, covered by AI test review (10.4 #10), PR review and mutation testing (ceiling) | closed (limit) |
+| J05 | 4 | blocker | red_check | weakened assertion in an existing test passes (R2-4-02) | reject | spec 10.4 #10 is an AI check; a deterministic version needs requirement-aware test diffing | closed (limit) |
+| J06 | 4 | major | coverage | coverage exclusion in pyproject.toml (R2-4-05) | reject | general build files cannot be protected; human review of the approved scan; documented limit | closed (limit) |
+| J07 | 4 | major | coverage, diff_scope | binary file crashes coverage; committed bytecode is ignored by diff_scope (R2-4-06) | accept | skip binary files; added bytecode fails | open |
+| J08 | 4 | major | red_check | whole suite on base: unrelated failure fakes red (R3-4-02) | accept | optional {tests} placeholder in --test-cmd | open |
+| J09 | 4 | major | coverage | no coverage tool (Delphi) can never pass (R3-4-03, G20) | accept | a signed min_changed_line_coverage of 0 means no report is needed | open |
+| J10 | 4 | major | cov_import | lone file-name match inherits another module's coverage (R3-4-04) | accept | need two shared path segments unless the report path is a bare name | open |
+| J11 | 4 | major | INSTALL | hotfix at night needs two merges; break-glass undocumented (R3-4-05) | accept | three lines: admin merge, then the plan and gates within 5 working days | open |
+| J12 | 4 | major | state.sh, glossary | change name from branch breaks with two PRs (R1-4-03) | accept | match the change folder whose name the branch contains; glossary: one spec, two PRs | open |
+| J13 | 4 | minor | tangle | kit/INSTALL.md not high-risk (R2-3-08) | accept | add to high-risk names | open |
+| J14 | 4 | minor | commands | bootstrap says policy; implement points at impact.md, gate step 5 asks a redundant sign-off (R1-4-04, -05, -C3) | accept | fix wording; remove step | open |
+| C01 | 4 | cut | red_check | head run duplicates CI's coverage run (R3-4-C1) | accept | remove; the CI test step must pass | open |
+| C02 | 4 | cut | red_check | behaviour_changed base run for refactors (R3-4-C2) | accept | remove; refactor safety = existing tests green on head | open |
+| C03 | 4 | cut | coverage | stale_report mtime check (R3-4-C3, H18) | accept | remove; reports come from CI | open |
+| C04 | 4 | cut | gate_check | --baseline-total keeps an agent-typed number (R1-4-C2) | accept | remove; baseline is a report (CI reuses the target's last one, no extra run: R4-4-01 in part) | open |
+| C05 | 4 | cut | kitconst, router | Type docs duplicates the no-folder path (R1-4-C1) | accept | remove the type; docs-only PRs need no change folder | open |
+| C06 | 4 | cut | gate_check | --also flag (R4-4-05) | accept | remove | open |
+| C07 | 4 | cut | CLAUDE.md, router.md, state.md | duplicates in always-loaded text; unmeasurable metrics columns (R4-4-03, -04, -06) | accept | trim | open |
+| C08 | 4 | cut | glossary | G1-G4 beside ready/done (R4-4-07) | reject | spec uses both; glossary maps them (G26) | closed |
+| C09 | 4 | add | INSTALL | script to print CODEOWNERS lines (R4-4-08) | reject | adds a script; the lead copies one list | closed |
+| J15 | 4 | minor | kitconst | FooTests/ folder, Spec model class (R3-4-06) | reject | wider globs re-open production misclassification (R3-3-08); rename or list in the scan | closed |
+| J16 | 4 | minor | testbed | change folder lacks slices.md (R5-4-02) | accept | add one | open |
