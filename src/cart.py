@@ -11,3 +11,9 @@ def bulk_discount(items):
         raise ValueError("negative quantity")
     units = sum(i["qty"] for i in items)
     return round(subtotal(items) * 0.05, 2) if units >= 10 else 0.0
+
+
+def free_shipping(items):
+    if subtotal(items) >= 50:
+        return True
+    return False
