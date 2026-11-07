@@ -1,9 +1,9 @@
 ---
-description: Run the deterministic gates for ready or done, then an AI review, then ask the human for sign-off.
+description: Run the deterministic gates (ready or done, picked from git), then an AI review; the human merge is the sign-off.
 argument-hint: ready|done <change-name>
 ---
 
-purpose: Run the deterministic gates for ready or done, then an AI review, then ask the human for sign-off.
+purpose: Run the deterministic gates (ready or done, picked from git), then an AI review; the human merge is the sign-off.
 
 Follow `kit/core/rules.md`. Arguments: `$ARGUMENTS`.
 

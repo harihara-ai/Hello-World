@@ -7,6 +7,7 @@ purpose: the one place that says where kit files go in a target repo, what a hum
 2. Copy `kit/.claude/commands/*.md` to `.claude/commands/` (Claude Code reads commands only there).
 3. Add the line `@kit/CLAUDE.md` to the root `CLAUDE.md` (create it if missing).
 4. Needs `python3` (3.8 or later) and `git`. Nothing is installed; no hooks are added.
+   Add `__pycache__/` and `openspec/changes/*/gates-*.json` (local gate output) to `.gitignore`.
 5. A human merges this install PR (CI gates start with the next PR). Then run `/bootstrap`; it ends with its own PR.
 
 ## What a human protects
@@ -33,9 +34,13 @@ The gate picks the stage: ready for a plan PR (it may change only its change fol
 with no change folder passes only if it touches docs or human-owned files. Keep each run's coverage report as an
 artifact; the target's latest is the next baseline, so the base is never re-tested. `{tests}` in the test command
 is replaced by the changed test files. No coverage tool (Delphi): a signed `min_changed_line_coverage: 0`.
+When the install PR merges, run the tests with coverage on the target once and keep that report: it is the first baseline.
+`{tests}` examples: pytest `pytest {tests}`; PHPUnit `vendor/bin/phpunit {tests}`. Maven and dotnet take class names, so
+use the whole suite there.
 Make the job a required check.
 
-Hotfix at night: an admin merges with the check overridden, then the plan PR and the gates follow within 5 working days.
+Hotfix at night: an admin merges with the check overridden; within 5 working days a retro plan PR adds the spec and an
+`evidence.md` naming the merged commit (`kit/playbooks/bug.md`).
 
 ## Upgrade
 Replace `kit/` and `kit.manifest.yml` in one human PR, copy the commands again (Files, step 2), then run `/refresh`.

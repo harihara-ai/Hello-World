@@ -9,7 +9,7 @@ purpose: shared terms used by every component; new terms are added here, not red
 | Task | One scenario, one red-green cycle |
 | Floor | Minimum bar in the kit's `policy.yml`. Repos may raise it, never lower it silently |
 | REQ ID | `REQ-<AREA>-<NNN>`, for example `REQ-BILL-004` |
-| Impact scan | List of files and symbols a change may touch (`impact.md`) |
+| Impact scan | Globs of files a change may touch (`inputs/diff_scope.json`, merged with the plan) |
 | Characterization test | Test that pins current behaviour of untested code before it changes |
 | Gate | Deterministic check, JSON in and JSON out. G1 ready, G2 slice ready, G3 slice done, G4 PR done |
 | observed / inferred / confirmed | Confidence of a fact. Only `confirmed` may become a spec |

@@ -24,3 +24,6 @@ New case 20 (conftest.py in the change folder). GREEN (3 runs, scratch tangle): 
 
 ## Rebuild on scratch lock
 70 files tangled identical to dev tree; kit_lint 'OK: 49 components clean'. Kit size: code 1297 (+15), md/yml 602 (+8), files 49.
+
+## Pin and GREEN on workspace (human-approved)
+PINNED 70 files. added=0 changed=18 removed=0 (9 high-risk approved).

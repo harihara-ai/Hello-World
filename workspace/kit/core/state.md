@@ -21,4 +21,5 @@ All under `openspec/changes/<name>/`:
 `docs/ai/index.json` holds one entry per knowledge item (spec section 6):
 `{"id", "path", "kind", "purpose", "module", "module_paths": [globs], "confidence", "verified_sha", "depends_on", "est_tokens"}`.
 `/refresh` diffs each entry's `module_paths` since its `verified_sha`.
-The change name is the branch name after its last `/`; the ticket key is the first `ABC-123` in the branch.
+The change is the longest change folder name contained in the branch name (so `-plan` and `-code` branches both work);
+the ticket key is the first `ABC-123` in the branch.

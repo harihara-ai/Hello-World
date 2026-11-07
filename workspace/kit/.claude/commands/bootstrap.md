@@ -3,7 +3,7 @@ description: Set up a repo once: probe tools, detect practices, write docs/ai kn
 argument-hint: 
 ---
 
-purpose: Set up a repo once: probe tools, detect practices, write docs/ai knowledge files and policy. Safe to re-run.
+purpose: Set up a repo once: probe tools, detect practices, write docs/ai knowledge files. Safe to re-run.
 
 Follow `kit/core/rules.md`. Arguments: `$ARGUMENTS`.
 

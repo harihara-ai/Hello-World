@@ -63,6 +63,12 @@ def changed_paths(base):
                         + (git("ls-files", "--others", "--exclude-standard") or "").splitlines()) if n]
 
 
+def exists_in_base(base, rel):
+    """True if the file exists in the base commit, even when it is empty."""
+    return bool(base) and subprocess.run(["git", "cat-file", "-e", "%s:%s" % (base, rel)],
+                                         capture_output=True).returncode == 0
+
+
 def approved_plan(base, ch):
     """The plan as merged to the base commit (G1 approval), copied to a temp dir, or None if not merged."""
     d = tempfile.mkdtemp(prefix="plan-")

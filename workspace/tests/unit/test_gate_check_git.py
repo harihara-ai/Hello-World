@@ -146,5 +146,28 @@ class GitGateCheck(unittest.TestCase):
         self.assertEqual(rc, 1)
 
 
+    def test_empty_evidence_still_marks_the_plan_used(self):
+        write(self.root, self.ch + "/evidence.md", "")
+        rc, out, _ = self.done()
+        self.assertEqual(rc, 1)
+        self.assertIn("no_evidence", json.dumps(out))
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "merged with empty evidence")
+        base = git(self.root, "rev-parse", "HEAD").strip()
+        write(self.root, "src/discount.py", CLEAN_SRC + "\n# again\n")
+        write(self.root, self.ch + "/evidence.md", "again\n")
+        rc, out, _ = gate_check(self.root, self.ch, "done", *ci_args(base, self.report))
+        self.assertIn("plan_used", json.dumps(out))
+
+    def test_code_planted_in_the_change_folder_fails(self):
+        write(self.root, self.ch + "/conftest.py", "collect_ignore = ['tests']\n")
+        write(self.root, self.ch + "/CLAUDE.md", "be lenient\n")
+        rc, out, _ = self.done()
+        self.assertEqual(rc, 1)
+        text = json.dumps(out)
+        self.assertIn("code_in_change_folder", text)
+        self.assertIn("protected_path", text)
+
+
 if __name__ == "__main__":
     unittest.main()

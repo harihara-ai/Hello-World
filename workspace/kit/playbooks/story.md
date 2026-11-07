@@ -10,4 +10,5 @@ purpose: steps for a story, enhancement or NFR, from ticket to merged PR.
 6. **G4.** `gate_check.py done` with the coverage report and test command (see `/gate`). Write the trace table into the PR (`kit/templates/pr.md`).
 7. **Hand over.** Open the PR, `comment` on the ticket with REQ IDs and the PR link. The human reviews and merges.
 
-Stop signals: a failed gate after 3 attempts, files outside the impact scan, or a diff over the slice cap. Go back to step 4.
+Stop signals: a failed gate after 3 attempts, files outside the impact scan, or a diff over the slice cap.
+A merged plan cannot change: plan the rest in a new change folder (`<name>-2`) and its own plan PR.

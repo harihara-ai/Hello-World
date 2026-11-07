@@ -28,7 +28,7 @@ KNOWN = ["injection", "policy_guard", "spec_lint", "granularity", "trace_check",
 CHANGE = re.compile(r"openspec/changes/[A-Za-z0-9][A-Za-z0-9._-]*")
 sys.path.insert(0, HERE)
 import policy  # noqa: E402
-from changectx import PLAN_FILES, approved_plan, changed_paths, default_base, from_base, git, texts_under  # noqa: E402
+from changectx import PLAN_FILES, approved_plan, exists_in_base, changed_paths, default_base, from_base, git, texts_under  # noqa: E402
 from kitconst import DOCS, PROTECTED, TYPES, is_test_file, matches  # noqa: E402
 
 
@@ -150,9 +150,9 @@ def main():
     if a.stage == "done" and in_git:
         if plan is None:
             plan_issue = ("plan_not_approved", "the plan is not in the base commit: merge the plan PR first")
-        elif from_base(base, ch + "/evidence.md"):
-            plan_issue = ("plan_used", "this plan was already implemented; open a new plan PR")
-        elif not os.path.isfile(os.path.join(ch, "evidence.md")):
+        elif exists_in_base(base, ch + "/evidence.md"):
+            plan_issue = ("plan_used", "this plan was already implemented; plan the next change in a new change folder")
+        elif not os.path.isfile(os.path.join(ch, "evidence.md")) or not os.path.getsize(os.path.join(ch, "evidence.md")):
             plan_issue = ("no_evidence", "record RED then GREEN in evidence.md (/implement)")
     if plan_issue:
         results.insert(0, {"gate": "plan", "pass": False, "findings": [

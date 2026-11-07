@@ -14,7 +14,7 @@ purpose: north star rules loaded in every session (L0). Short on purpose; detail
 - Files listed in `PROTECTED` (`kit/scripts/kitconst.py`) are changed only by humans, in their own PR.
 
 ## Flow per change (two PRs)
-1. Spec from `kit/templates/spec.md`, then `/slice`. Gate `ready` passes; open the plan PR. A human merging it is G1.
+1. Spec from `kit/templates/spec.md`, then `/slice`. Gate `ready` passes; open the plan PR. A human merging it is the approval (G1).
 2. On a new branch: `/implement`, one scenario per red-green cycle, evidence in `evidence.md`, at most 3 attempts.
 3. Gate `done` passes on the code PR (CI runs it with real coverage and the red check). A human merges; you never do.
 4. No code without a requirement, no requirement without a test, nothing the spec does not ask for.
