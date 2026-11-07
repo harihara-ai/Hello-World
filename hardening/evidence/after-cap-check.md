@@ -95,3 +95,22 @@ Check (coverage.py 7.17.2, Python 3.13): an untested function excluded by `exclu
 100% with the setting in `setup.cfg`, `tox.ini` or `pyproject.toml` each, so all three are listed (the plan named only
 `pyproject.toml`). Scratch tangle: `changed=1`, `kit/INSTALL.md HIGH-RISK`, lock `68b927a5...` to `35a7a7b5...`.
 Not run: Maven, Gradle, npm and dotnet coverage settings (listed from the plan, not tested); a real CODEOWNERS on a host.
+PINNED (human-approved): changed=1 (kit/INSTALL.md), kit.lock sha256 d6546e79... After the pin: tangle 70; lint 49 clean;
+selftest lock match, forge 25, unit 169, contract 5, mutation 14 OK; run_traps (1 run) 22/22, false alarms 0.
+
+## Coverage report forged by the PR's own tests (M02)
+Two-job recipe, pinned kit. f0: new `free_shipping()` with an untested branch, negative-qty test removed ->
+`coverage:changed_lines`, `coverage:overall_drop`, exit 1. f1: same, plus 8 lines at the end of tests/test_cart.py
+(`coverage.Coverage.current().get_data().add_lines(...)` for every line of src/cart.py) -> all gates True, exit 0.
+```
+id: M02
+severity: blocker
+location: kit/INSTALL.md tests job; kit/gates/coverage.py (trusts a report made by a run of PR code)
+evidence: f0 blocked, f1 passes, as above
+problem: Coverage is collected inside the process that runs PR code, so a test can mark any line as run. The
+coverage gate (traps 1, 8) is then open to any PR; red_check still passes because the real tests fail on base.
+proposed_fix: owner decision. (a) Accept as a limit beside J04/J05 (tests can game test evidence); human review sees
+the coverage API in a test file. (b) Reuse the coverage gate's existing changed-line scan (COVERAGE_IGNORE) to also
+fail on coverage-tool API tokens in changed test files; cheap, catches the plain form, not obfuscation.
+confidence: high (Python, coverage.py); other stacks not run
+```

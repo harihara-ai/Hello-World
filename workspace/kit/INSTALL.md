@@ -13,6 +13,8 @@ purpose: the one place that says where kit files go in a target repo, what a hum
 ## What a human protects
 Put every pattern in `PROTECTED` in `kit/scripts/kitconst.py` into `CODEOWNERS`. That one list is what
 `gate.diff_scope` refuses in an AI change; CODEOWNERS stops the same change arriving another way.
+Also list the build files that can hold coverage or test settings: `pyproject.toml`, `setup.cfg`, `tox.ini`, `pom.xml`,
+`build.gradle*`, `package.json`, `*.csproj`. They are not in `PROTECTED` (a change may need them), so a human reviews each change.
 
 ## Two PRs per change
 1. Plan PR: `spec.md`, `slices.md`, `inputs/diff_scope.json`, `inputs/granularity.json`. CI runs `ready`; a human
