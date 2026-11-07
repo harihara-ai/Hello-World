@@ -44,7 +44,7 @@ Repos (owner choice): legacy `harihara-ai/commons-lang` (Java, Maven, JaCoCo, PI
 | --- | --- | --- | --- | --- | --- | --- |
 | CL-1 CharUtils.isAsciiWhitespace | story | commons-lang#4 (merged `4c85e8e`) | pass | commons-lang#5 | CI pass (job 128454292181): changed-line coverage 100%, red_check exit_base 1 (compile error on base), Maven helper ran | RED is a test compile error: red_check counts it as fail-on-base |
 | CL-2 BitField.getValue(long) bit 63 | bug (hunt, unreleased 3.21.0 API) | commons-lang#6 (merged `fef2412`) | pass | commons-lang#7 | CI pass (job 128456923773) | P04 applied: fix spike ran the BitField tests before the plan; none pinned the bug |
-| CL-3 CharUtils char overloads delegate | refactor | commons-lang#8 | pass | - | local pass (coverage 100%; red_check n/a) | S0 CHAR tests pin all 65536 chars; duplicated bodies 2 to 0 |
+| CL-3 CharUtils char overloads delegate | refactor | commons-lang#8 (merged `d67da76`) | pass | commons-lang#9 | CI pass (job 128459030177) | S0 CHAR tests pin all 65536 chars; duplicated bodies 2 to 0 |
 
 
 ## Findings
@@ -84,7 +84,7 @@ proposed_fix: one of: allow metrics.csv in the change folder, or have /implement
 | KOA-2 HEAD Content-Length 2 for web stream bodies | bug (found in the hunt) | koa#5 (merged `d4a3968`) | CI pass | koa#6 | CI pass: done, 6 gates, changed-line coverage 100%, red_check exit_base 1 (job 128438025988) | first code run broke `respond.test.js`, which asserted the buggy length; owner widened plan #5 (unmerged) to that assertion |
 | KOA-3 refactor lib/only.js | refactor | koa#7 (merged `3553675`) | CI pass | koa#8 | CI pass (job 128439471377); red_check n/a for refactor | S0 CHAR tests passed on old code; first draft pinned a wrong getter assumption (read once; really twice), dropped and spec corrected before merge; only.js 9 to 3 lines, branches 5 to 4 |
 
-Owner review (commons-lang): #5 plus #6 took 3 min (owner).
+Owner review (commons-lang): #5 plus #6 took 3 min, #7 plus #8 2 min (owner); #9 open.
 Owner review: koa#4 plus koa#2 took 5 min, koa#6 4 min, koa#8 2 min (owner). koa#6 took 4 min (owner).
 Metrics (KOA-1): S1 est 35, actual 48 lines, 2 files, 1 attempt; S2 est 20, actual 24, 2 files, 1 attempt.
 
@@ -110,5 +110,21 @@ proposed_fix: INSTALL: run the full suite on the CI runner in the install PR (te
   install PR; or say the quarantine PR is merged before the ruleset is added
 ```
 
+## Summary after six slices (2026-11-07, day 1 of the pilot)
+| Measure | koa | commons-lang |
+| --- | --- | --- |
+| Slices (story, bug, refactor) | 3 | 3 |
+| PRs (plan + code) | 6, plus install and bootstrap | 6, plus install, quarantine and bootstrap |
+| First-attempt pass (gate in CI, first run) | 6 of 6 | 6 of 6 |
+| Red-green attempts per slice | 1 | 1 |
+| Gate catches before the PR (local) | granularity split (KOA-1), diff_scope metrics.csv (P03) | none |
+| False alarms in CI | 0 | 0 |
+| Plan changed before merge | KOA-2 (test pinned the bug), KOA-3 (wrong assumption) | none |
+| Owner review time (owner's figures) | 11 min for 4 PRs reported | 5 min for 4 PRs reported |
+| Install friction | none | classic protection rule hidden on phone; baseline failed (CL-Q1, P05) |
+Tokens and minutes per slice: not measured. Escapes after merge: none known yet (needs the four weeks).
+
 ## Not run
-- CI on koa (Actions on the fork must be enabled by the owner); baseline; rulesets; slices; commons-lang install.
+- Four weeks of normal use; escape log; token and time metrics per slice; mutation testing (fix plan item 2, PIT and
+  Stryker); `/genie` and `/learn` driven end to end by an agent (steps were hand-run from the command files);
+  CL-Q1 root cause; Apache's own CI on the fork (fails; not required).

@@ -50,7 +50,9 @@ Start with item 1 and stop when it is done.
   Was: (after the owner relinks Claude's GitHub to harihara-ai; the bot is dropped). Push the B2 commit;
   read #17's checks, close it unmerged; read #3's merge, the next baseline run and both rulesets; tangle the INSTALL
   edit (N01 a dropped), show the pin diff, pin on the owner's yes, rebuild the package. Append to `evidence/hosted-ci.md`.
-- **C. Pilot** per the Gold plan, with item 2 (diff-scoped mutation testing) set up per stack.
+- **C. Pilot** per the Gold plan. Started 2026-11-07 (`evidence/pilot.md`): koa (JS) and commons-lang (Java) installed,
+  3 slices each, all 12 PRs passed CI gates first time. Open: findings P01-P05 (minor), item 2 (mutation testing),
+  four weeks of use with escape and metrics logging, then the Gold decision.
 
 ## Fix plan for the known issues (value first, effort second)
 | # | Issue | Fix | Value | Effort |
