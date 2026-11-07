@@ -75,7 +75,8 @@ Score line, identical in all 5 runs: `22/22 cases; critical 17/17; other 5/5; fa
 2. **Fixes after the cap (L01-L04):** a short R2/R5 check ran after sign-off (`after-cap-check.md`). L01, L03, L04 hold;
    L02 was bypassed by a test step that plants a git hook or config (M01); fixed with two CI jobs and pinned after
    this pack was signed. The check also found M02 (a test can forge coverage.py data), fixed and pinned; a disguised
-   call still passes. Not a full round; not run on a hosted CI. Re-run after the pins: T1-T6 as above, 5 of 5.
+   call still passes. Not a full round. Hosted CI trial (`hosted-ci.md`): M01 and M02 fixes hold on GitHub Actions;
+   new blocker N01 (a PR's own workflow fakes the `gate` check), open. Re-run after the pins: T1-T6 as above, 5 of 5.
 3. **Synthetic only:** two small synthetic repos; PHP runs through a Python stand-in runner; coverage reports are fixtures;
    tracker and language-server probes (cases 09, 10) use simulated results; the CI recipe was run by hand on local bare
    origins, never on a hosted CI with branch protection.

@@ -8,6 +8,8 @@ purpose: where the North Star kit stands, the resume prompt for a new session, a
   (`hardening/evidence/after-cap-check.md`): L01, L03, L04 hold; L02 bypassed, new blocker M01, fixed and pinned (item 1b).
   Items 3, 1c (M02, coverage forging), 4 and 5 (install zip) pinned. Package rebuilt as 1.0.2 (`hardening/evidence/package.md`).
 - Spec `proposal/north-star-v2.md` synced with the kit.
+- Session B (hosted CI trial) ran on `trial-main`: PRs #1-#11, `hardening/evidence/hosted-ci.md`. New blocker N01
+  (a PR edits the workflow to fake the `gate` check; mergeable when the author is the only code owner). Awaits the owner.
 - Branch `ccr-25d09baa-rmhk7r`. State: `hardening/state.md`. Ledger: `hardening/findings.md`. Pack: `hardening/evidence/EVIDENCE.md`.
 
 ## Resume prompt (paste into a new Claude Code session in this repo)
@@ -56,7 +58,9 @@ Pre-pilot items done (1, 1b, 1c, 3, 4, 5). Do 2 while setting the pilot up. Leav
 ## Not run (open register; close an item only with a run and its evidence)
 | Item | Risk if wrong | When |
 | --- | --- | --- |
-| CI recipe (two jobs, artifact, required checks, branch protection) on a hosted CI | the gate that counts was only hand-simulated | pilot setup, first thing; blocks Gold |
+| CI recipe on a hosted CI: run on GitHub Actions (`evidence/hosted-ci.md`); two jobs, artifacts, baseline, ruleset hold for plan, clean, t2-t4, d1, f1, failing tests; **open: N01** (w1 mergeable) | a PR fakes the required gate check | fix N01, re-run w1; blocks Gold |
+| w1 with a PR author who is not a code owner; a PR adding a second workflow that emits a `gate` check | N01 fix unproven | with the N01 fix |
+| Block force pushes on the trial ruleset; merge of clean code PR #3 and the next baseline | baseline chain untested past one merge | next B session |
 | Self-hosted runner reuse between jobs | M01 returns on a persistent runner | pilot setup, if a pilot repo uses one |
 | Test tools installed "as ../approved declares them" (npm, Maven, Composer) | PR install scripts run before the gate | pilot setup, per stack |
 | Coverage forging on PHP, Java, .NET, JS stacks; COVERAGE_API patterns untested there | coverage gate open on those stacks | pilot, per stack |
