@@ -55,11 +55,11 @@ class Trace(unittest.TestCase):
         os.remove(os.path.join(self.root, "tests/test_discount.py"))
         self.assertEqual(self.check()[0], 1)
 
-    def test_orphan_test_id_warns_only(self):
+    def test_ids_of_other_changes_are_not_reported(self):  # L06: warnings for earlier changes piled up
         write(self.root, "tests/test_x.py", "# REQ-OTHER-009\n")
         rc, out, _ = self.check()
         self.assertEqual(rc, 0)
-        self.assertIn("orphan_id", rules(out))
+        self.assertEqual(out["findings"], [])
 
 
     def test_ids_in_ticket_are_not_requirements(self):

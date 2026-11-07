@@ -8,7 +8,7 @@ purpose: the one place that says where kit files go in a target repo, what a hum
 3. Add the line `@kit/CLAUDE.md` to the root `CLAUDE.md` (create it if missing).
 4. Needs `python3` (3.8 or later) and `git`. Nothing is installed; no hooks are added.
    Add `__pycache__/`, `.coverage` and `openspec/changes/*/gates-*.json` (local and test output) to `.gitignore`.
-5. A human merges this install PR (CI gates start with the next PR). Then run `/bootstrap`; it ends with its own PR.
+5. Add the CI jobs (below) in this same PR. A human merges it (CI gates start with the next PR). Then run `/bootstrap`; it ends with its own PR.
 
 ## What a human protects
 Put every pattern in `PROTECTED` in `kit/scripts/kitconst.py` into `CODEOWNERS`. That one list is what
@@ -17,7 +17,8 @@ Also list the build files that can hold coverage or test settings: `pyproject.to
 `build.gradle*`, `package.json`, `*.csproj`. They are not in `PROTECTED` (a change may need them), so a human reviews each change.
 
 ## Two PRs per change
-1. Plan PR: `spec.md`, `slices.md`, `inputs/diff_scope.json`, `inputs/granularity.json`. CI runs `ready`; a human
+1. Plan PR: `spec.md`, `slices.md`, `inputs/diff_scope.json`, `inputs/granularity.json`, never `evidence.md` (it marks
+   the plan as implemented). CI runs `ready`; a human
    merges it. That merge is the G1 approval.
 2. Code PR, branched after the plan is merged. CI runs `done`, which reads the plan from the base commit and
    fails if the PR changes it.
@@ -48,8 +49,9 @@ artifact; the target's latest is the next baseline, so the base is never re-test
 is replaced by the changed test files. No coverage tool (Delphi): a signed `min_changed_line_coverage: 0`.
 When the install PR merges, run the tests with coverage on the target once and keep that report: it is the first baseline
 (a flaky test there is quarantined first: `kit/playbooks/safety-net.md`).
-`{tests}` examples: pytest `pytest {tests}`; PHPUnit `vendor/bin/phpunit {tests}`. Maven and dotnet take class names, so
-use the whole suite there.
+`{tests}` examples: pytest `pytest {tests}`; PHPUnit `vendor/bin/phpunit {tests}`. Maven and dotnet take class names and
+Delphi (DUnit, DUnitX) takes no file list, so use the whole suite there. Keep CI helper scripts tracked or outside the
+checkout: the red check treats an untracked file as added code and removes it for the base run.
 Make both jobs required checks.
 
 Hotfix at night: an admin merges with the check overridden; within 5 working days a retro plan PR adds the spec and an

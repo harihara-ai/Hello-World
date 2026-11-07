@@ -2,6 +2,15 @@
 
 purpose: what changed in the North Star kit, by phase and hardening round.
 
+## 1.0.1-silver-synthetic (2026-11-07)
+- **After-cap check (R2, R5):** L01, L03, L04 hold. L02 was bypassed by a test that plants a git hook or git config (M01):
+  CI is now two jobs, and the gate job runs on a fresh runner with no PR code before the gates.
+- **M02:** a test could write coverage.py's data; the coverage gate now fails changed code that calls the coverage tool.
+- **J06 control:** INSTALL lists build files with coverage settings for CODEOWNERS.
+- **L06:** trace_check no longer warns about REQ IDs of other changes; INSTALL wording (CI jobs in the install PR, no
+  evidence.md in a plan PR, Delphi runs the whole suite, CI helpers tracked).
+- **Re-check:** selftest green; run_traps 22/22 in 5 of 5 runs, 0 false alarms. T7 not run.
+
 ## 1.0.0-silver-synthetic (2026-11-07)
 - **Phases 0-3:** settings (round cap 6, Silver target, synthetic test bed); proposal split into 49 components with a
   manifest; components built tests first; two synthetic test bed repos with seeded traps.

@@ -11,7 +11,7 @@ each plan by merging its PR, and CI runs the gates on every PR with the approved
 
 ## Install
 Follow `workspace/kit/INSTALL.md`: copy `kit/`, the commands and the root `CLAUDE.md` line, protect the paths in
-`kit/scripts/kitconst.py` with CODEOWNERS, add the CI job, then run `/bootstrap` and `/genie`.
+`kit/scripts/kitconst.py` and the listed build files with CODEOWNERS, add the two CI jobs, then run `/bootstrap` and `/genie`.
 
 ## Contents
 | Path | What |
@@ -29,6 +29,8 @@ Follow `workspace/kit/INSTALL.md`: copy `kit/`, the commands and the root `CLAUD
 
 ## Known limits (short)
 - The gates cannot prove that tests for new code assert the right thing, that edited tests were not weakened, or that
-  coverage settings in general build files were not loosened. AI test review, PR review and mutation testing cover these.
+  coverage settings in general build files were not loosened (those files go to CODEOWNERS). AI test review, PR review
+  and mutation testing cover these. A disguised call to the coverage tool in a test can still forge coverage.
 - Everything was tested on synthetic repos, fixture coverage reports and a hand-run CI recipe.
-- Hardening stopped at the round cap; the last four fixes were not reviewed by the reviewer swarm.
+- Hardening stopped at the round cap. The after-cap fixes had one short R2/R5 check, not a full round
+  (`hardening/evidence/after-cap-check.md`). The two-job CI recipe has not run on a hosted CI.

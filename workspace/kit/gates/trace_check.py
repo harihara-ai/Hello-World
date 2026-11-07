@@ -56,7 +56,6 @@ def check(p):
     if not n:
         return [finding("no_test_files", "no test files found (see kitconst.TEST_GLOBS)")], {}
     f = [finding("untested", "%s has no test" % i, i) for i in sorted(ids - tested)]
-    f += [finding("orphan_id", "tests mention %s, which is in no spec here" % i, i, "warn") for i in sorted(tested - ids)]
     return f, {"requirements": sorted(ids)}
 
 

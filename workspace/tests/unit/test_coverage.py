@@ -153,6 +153,19 @@ class ReportCoverage(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("coverage_exclusion_added", rules(out))
 
+    def test_coverage_api_in_changed_code_fails(self):  # M02: code that writes its own coverage data
+        report = cobertura({"src/price.py": {1: 1, 2: 1, 3: 1}})
+        for path, line in (("tests/test_price.py", "import coverage"), ("src/forge.py", "from coverage import Coverage"),
+                           ("web/a.js", "global.__coverage__ = {}"), ("tests/FeeTest.php", "xdebug_start_code_coverage();"),
+                           ("tests/FeeTest.java", "org.jacoco.agent.rt.RT.getAgent();")):
+            write(self.root, path, "a = 1\n" + line + "\n")
+            rc, out, _ = self.run_report(report)
+            os.remove(os.path.join(self.root, path))
+            self.assertIn("coverage_api_in_change", rules(out), path)
+        write(self.root, "tests/test_price.py", "import coverage_helpers\n# coverage must stay above 80\n")
+        rc, out, log = self.run_report(report)
+        self.assertEqual(rc, 0, log)
+
     def test_container_paths_match_by_longest_suffix(self):
         write(self.root, "src/Api/Program.cs", "x\n")
         write(self.root, "src/Core/Program.cs", "y\n")
