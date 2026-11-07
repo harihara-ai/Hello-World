@@ -17,6 +17,9 @@ purpose: where the North Star kit stands, the resume prompt for a new session, a
 **New direction (2026-11-07): `hardening/DIRECTION.md`** (scale ladder S1-S6, debt repos, reliability proof,
 autonomous server, price). It sets the next sessions; the Gold plan below stays the certification target.
 
+Moved 2026-11-07: history pushed to harihara-ai/northstar-kit `main` (`1ca944f`); next session started there
+(CI, then R1 good-path cases). Hello-World keeps the pilot trial branches only.
+
 ## Resume prompt for the next session (northstar-kit; supersedes the older one below)
 Owner first: create an empty private repo `harihara-ai/northstar-kit` (no README), then start a Claude Code cloud
 session with harihara-ai/Hello-World and harihara-ai/northstar-kit attached, and paste:
