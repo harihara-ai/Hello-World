@@ -39,6 +39,11 @@ Start with item 1 and stop when it is done.
   Actions workflow on PRs to trial-main; owner adds a branch ruleset (PR, checks tests and gate, code-owner review) in
   the phone browser when asked. Real PRs: plan, clean code, t2, t3, t4, d1, f1, f2 (expected pass), failing tests, and
   w1 (PR edits the workflow to skip the gate; must not be mergeable). Evidence: hardening/evidence/hosted-ci.md.
+- **B2. N01 fix (a)** (new session after the owner links Claude's GitHub to `harihara-ai-bot`, Write collaborator since
+  2026-11-07). Check `get_me` is the bot; re-open w1 as the bot on trial-main (expect code-owner review required, not
+  mergeable without the owner's approval); owner approves and merges clean PR #3 (baseline chain). A saved API token
+  for the bot was refused by the session (github.com uses the GitHub connection only). Owner: rulesets per part 4 of
+  session B (block force pushes on trial-main; master ruleset; admin bypass for PRs only). Append to `evidence/hosted-ci.md`.
 - **C. Pilot** per the Gold plan, with item 2 (diff-scoped mutation testing) set up per stack.
 
 ## Fix plan for the known issues (value first, effort second)
