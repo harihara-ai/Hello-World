@@ -115,3 +115,18 @@ Decision (owner, after the access loss): drop fix (a) and the bot account. Kept:
 INSTALL source edited in `proposal/modules/01-core.md`; not tangled, not pinned.
 After the relink to harihara-ai: `git fetch` shows #3 merged on trial-main (`0118cb3`). The GitHub tools still answer
 `invalid session` (as after the earlier relink), so #17's checks, the baseline run and the rulesets: not read.
+
+## Session B3: close B2 (2026-11-07)
+`get_me`: `harihara-ai` (relinked; GitHub tools work again). B2 commits were already on origin (`a9608b4`).
+| Read | Result |
+| --- | --- |
+| #17 (bot PR, w1 again) | `GET pulls/17` and `PATCH` (close) 404; not in the PR list; run 42378971835 404. `refs/pull/17/head` = `5d87e3e` (branch `trial/w1-bot`) still on the repo. Likely hidden with the suspended bot account (inferred, not confirmed). Final `gate` result: not read |
+| #3 merge | merged by harihara-ai at 13:54:35Z, merge commit `0118cb3` on trial-main |
+| Baseline after #3 | run 42379102152 (push, trial-main, `0118cb3`): `baseline` success, `tests` and `gate` skipped; artifact `coverage-baseline` 534 bytes, sha256 `29ed01b8...` |
+| trial-main ruleset 26753370 (active) | deletion, pull_request (code-owner review, 0 approvals), required checks `tests` and `gate` (GitHub Actions), non_fast_forward |
+| master ruleset 26758462 (active) | deletion, non_fast_forward, pull_request (1 approval, extra approval for unattributed changes) |
+Rulesets read unauthenticated (`rules/branches/<b>`, `rulesets`); bypass actors not visible there: not read.
+Baseline chain holds past one merge. Force-push block on both branches confirmed as configured (not tried).
+Not run: a push or PR to master under its ruleset; #17's gate; owner approving a non-owner PR.
+INSTALL edit (N01 a dropped) tangled in scratch: `PINNED 70 files. added=0 changed=1 removed=0`, `kit/INSTALL.md
+HIGH-RISK`, lock `43107b55...` to `2fd5ec19...`; INSTALL 66 lines; lint 49 clean. Pin awaits the owner.
