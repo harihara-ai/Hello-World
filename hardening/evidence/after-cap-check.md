@@ -61,3 +61,26 @@ confidence: high
 Not run: a hosted CI with two jobs (so the proposed fix is unverified); whether PR tests can tamper with the coverage
 data or report they produce (the report already comes from a run of PR code); PATH or other user-level plants beyond
 `~/.gitconfig`; R2-5-01 u2/u3 (whitespace-only evidence.md) and the untracked `__pycache__` note (a2 of round 6).
+
+## M01 fix (fix plan item 1b): RED then GREEN
+Source: `proposal/modules/01-core.md` (core.install), INSTALL "CI is the gate that counts" now has two jobs. Harness:
+`attacks.sh` runs the same 9 cases against `ci.sh` (current recipe, one job, one HOME) and `ci2.sh` (tests job, then a
+gate job with its own dir, own HOME and a fresh clone; the report passed as an artifact). Fresh origins for each run.
+
+| Case | RED: current recipe | GREEN: two jobs |
+| --- | --- | --- |
+| plan PR (unmerged plan) | ready pass, exit 0 | ready pass, exit 0 |
+| a0 clean code PR | done pass, exit 0 | done pass, exit 0 |
+| t0 control, out-of-scope file | outside_scan, exit 1 | outside_scan, exit 1 |
+| d1 doctest .txt in change folder | code_in_change_folder, exit 1 | code_in_change_folder, exit 1 |
+| t1 test rewrites `../approved` | outside_scan, exit 1 | outside_scan, exit 1 |
+| t2 planted `post-checkout` hook | **pass, exit 0** | outside_scan, overall_drop, exit 1 |
+| t3 planted `core.fsmonitor` in `.git/config` | **pass, exit 0** | outside_scan, overall_drop, exit 1 |
+| t4 planted `core.fsmonitor` in `~/.gitconfig` | **pass, exit 0** | outside_scan, overall_drop, exit 1 |
+| s1 spike docs-only PR | pass, exit 0 | pass, exit 0 |
+
+GREEN: approved `diff_scope.py` in the gate job is the real file after t3 (not the planted stub).
+Scratch tangle: `PINNED 70 files. added=0 changed=1 removed=0`, `changed: kit/INSTALL.md HIGH-RISK`; only that file
+differs from `workspace/`. Not pinned: awaiting the human. Not run: a hosted CI (GitHub/GitLab) with two real jobs and
+artifacts; a self-hosted runner; installing test tools "as ../approved declares them" (the harness uses the runner's
+tools); the gate job's red_check run is the only PR code there and runs after every other gate (by reading gate_check).

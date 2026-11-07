@@ -30,7 +30,7 @@ Start with item 1 and stop when it is done.
 | # | Issue | Fix | Value | Effort |
 | --- | --- | --- | --- | --- |
 | 1 | done: L01-L04 fixed after the cap, never reviewed | One short check: R2 and R5 only, re-run their round 6 attacks and the INSTALL walk-through. No full round | High: closes the only unreviewed blockers | Low (one session) |
-| 1b | M01: PR tests plant a git hook or config that rewrites the approved kit (t2-t4) | INSTALL only: tests in one job, gate in a second job on a fresh runner that runs no PR code before gate_check. Pin needs a human | High: a blocker | Low (one INSTALL edit, re-run t2-t4) |
+| 1b | source fixed, pin awaits human. M01: PR tests plant a git hook or config that rewrites the approved kit (t2-t4) | INSTALL only: tests in one job, gate in a second job on a fresh runner that runs no PR code before gate_check. Pin needs a human | High: a blocker | Low (one INSTALL edit, re-run t2-t4) |
 | 2 | J04, J05: weak tests for new code, weakened edited tests | No new gate. In the pilot CI, run diff-scoped mutation testing on changed lines (mutmut, Stryker, PIT or Infection with a since-base option) for Tier 1 modules; report the score in the PR | High: the only real control for the top risk | Medium (CI step per stack) |
 | 3 | J06: coverage exclusions in build files | No new gate. Add `pyproject.toml`, `pom.xml`, `build.gradle`, `package.json`, `*.csproj` to CODEOWNERS in INSTALL so a human always reviews them | Medium | Very low (one INSTALL line) |
 | 4 | L06 minor wording, orphan_id noise, Delphi `{tests}` example | One small batch | Low-medium: removes friction for pilot teams | Low |
