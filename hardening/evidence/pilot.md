@@ -56,8 +56,21 @@ proposed_fix: one of: allow metrics.csv in the change folder, or have /implement
 | Ticket | Type | Plan PR | ready (CI) | Code PR | done | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | KOA-1 response.json / ctx.json | story | koa#3 (merged `8024d94`) | pass | koa#4 | CI pass: stage done, 6 gates, changed-line coverage 100%, red_check exit_base 1 (job 128436292711) | first ready run: granularity split (5 scenarios, 2 modules); split by requirement; 1 attempt per slice |
+| KOA-2 HEAD Content-Length 2 for web stream bodies | bug (found in the hunt) | koa#5 | local pass | - | local pass (6 gates) | first code run broke `respond.test.js`, which asserted the buggy length; owner widened plan #5 (unmerged) to that assertion |
 
+Owner review: koa#4 plus koa#2 took 5 min (owner).
 Metrics (KOA-1): S1 est 35, actual 48 lines, 2 files, 1 attempt; S2 est 20, actual 24, 2 files, 1 attempt.
+
+```
+id: P04
+severity: minor
+location: kit/.claude/commands/slice.md step 2 (impact scan); capability codenav (ctags)
+evidence: KOA-2: impact scan listed length.test.js; the fix broke respond.test.js "should keep Response headers",
+  which asserted HEAD content-length 2 (the bug). Found only by the full test run, after the plan PR was open.
+problem: a symbol scan finds callers, not tests that pin the current behaviour; a bug plan can miss a test it must edit
+proposed_fix: /slice for a bug: run the fix spike's full test suite before the plan PR, or grep tests for the
+  wrong value; record any test that pins the bug in the spec
+```
 
 ## Not run
 - CI on koa (Actions on the fork must be enabled by the owner); baseline; rulesets; slices; commons-lang install.
