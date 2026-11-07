@@ -88,3 +88,10 @@ tools); the gate job's red_check run is the only PR code there and runs after ev
 PINNED (human-approved "Proceed"): changed=1 (kit/INSTALL.md, high-risk), kit.lock sha256 48e40f7f... After the pin:
 tangle 70 files; lint 49 clean; selftest lock match, forge 25, unit 169, contract 5, mutation 14 OK; run_traps (1 run)
 22/22, false alarms 0; the 9 cases on the pinned kit with the two-job recipe give the GREEN column above.
+
+## Fix plan item 3 (J06): build files in CODEOWNERS
+INSTALL "What a human protects" lists build files with coverage or test settings for CODEOWNERS; no gate change.
+Check (coverage.py 7.17.2, Python 3.13): an untested function excluded by `exclude_lines` gives 75% with no config and
+100% with the setting in `setup.cfg`, `tox.ini` or `pyproject.toml` each, so all three are listed (the plan named only
+`pyproject.toml`). Scratch tangle: `changed=1`, `kit/INSTALL.md HIGH-RISK`, lock `68b927a5...` to `35a7a7b5...`.
+Not run: Maven, Gradle, npm and dotnet coverage settings (listed from the plan, not tested); a real CODEOWNERS on a host.
