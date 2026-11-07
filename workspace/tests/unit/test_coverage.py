@@ -15,7 +15,7 @@ def cov(changed, covered, base=70.0, cur=70.0, **policy):
 class ManualCoverage(unittest.TestCase):
     def test_full_coverage_passes_with_manual_warning(self):
         rc, out, log = cov({"a.py": [1, 2]}, {"a.py": [1, 2]})
-        self.assertEqual(rc, 0, log)
+        self.assertEqual(rc, 0, log)  # outside git (fixtures only)
         self.assertEqual(out["changed_line_coverage"], 100.0)
         self.assertIn("manual_evidence", rules(out))
 
@@ -57,6 +57,47 @@ class ReportCoverage(unittest.TestCase):
     def setUp(self):
         self.root = git_init(write_tree({"src/price.py": "a = 1\n", "tests/test_price.py": "# t\n"}))
         write(self.root, "src/price.py", "a = 1\nb = 2\nc = 3\n# comment\n")
+
+    def test_git_requires_a_report_when_code_changed(self):
+        rc, out, _ = run_gate("coverage", {"changed_lines": {"src/price.py": [2]}, "covered_lines": {"src/price.py": [2]},
+                                           "baseline_total": 1.0, "current_total": 1.0, "base": "HEAD"}, cwd=self.root)
+        self.assertEqual(rc, 1)
+        self.assertIn("report_required", rules(out))
+
+    def test_nothing_to_check_when_no_code_changed(self):
+        git(self.root, "checkout", "--", "src/price.py")
+        write(self.root, "tests/test_price.py", "# more\n")
+        rc, out, log = run_gate("coverage", {"base": "HEAD"}, cwd=self.root)
+        self.assertEqual(rc, 0, log)
+
+    def test_stale_report_fails(self):
+        p = write(self.root, "cov.xml", cobertura({"src/price.py": {1: 1, 2: 1, 3: 1}}))
+        os.utime(p, (1, 1))
+        rc, out, _ = run_gate("coverage", {"report": "cov.xml", "base": "HEAD", "baseline_total": 50.0}, cwd=self.root)
+        self.assertEqual(rc, 1)
+        self.assertIn("stale_report", rules(out))
+
+    def test_repo_git_config_cannot_hide_changes(self):
+        git(self.root, "config", "diff.noprefix", "true")
+        write(self.root, ".git/info/attributes", "*.py binary\n")
+        rc, out, _ = self.run_report(cobertura({"src/price.py": {1: 1, 2: 0, 3: 0}}))
+        self.assertEqual(rc, 1)
+        self.assertIn("changed_lines", rules(out))
+
+    def test_same_name_files_in_two_projects_do_not_cross_match(self):
+        write(self.root, "Core/Program.cs", "a\n")
+        write(self.root, "Api/Program.cs", "b\n")
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "two projects")
+        write(self.root, "Core/Program.cs", "a\nb\n")
+        xml = ('<coverage line-rate="0.9"><sources><source>/build/Core</source><source>/build/Api</source></sources>'
+               '<packages><package><classes>'
+               '<class filename="Program.cs"><lines><line number="2" hits="0"/></lines></class>'
+               '</classes></package><package><classes>'
+               '<class filename="Program.cs"><lines><line number="2" hits="5"/></lines></class>'
+               '</classes></package></packages></coverage>')
+        rc, out, _ = self.run_report(xml)
+        self.assertEqual(rc, 1)
 
     def run_report(self, report_text, fmt_name="cov.xml", **extra):
         write(self.root, fmt_name, report_text)

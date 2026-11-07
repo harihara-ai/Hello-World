@@ -20,3 +20,7 @@ RED: high-risk files refused on every tangle, even after a human pin: 'FAILED (f
 
 ## Rebuild on scratch lock
 66 files tangled identical to dev tree; kit_lint 'OK: 47 components clean'.
+
+## Pin and GREEN on workspace (human-approved)
+PINNED 66 files. added=0 changed=21 removed=0; HIGH-RISK approved: kit/.claude/commands/bootstrap.md, learn.md, kit/CLAUDE.md.
+selftest: lock check OK, forge 25 OK, unit 130 OK, contract 5 OK, mutation 14 OK. Runner unit tests OK. run_traps 19/19, false alarms 0.

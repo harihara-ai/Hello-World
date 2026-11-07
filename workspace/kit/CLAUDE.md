@@ -11,6 +11,7 @@ purpose: north star rules loaded in every session (L0). Short on purpose; detail
 ## The floor (never lowered by the AI)
 - Rules in `kit/core/rules.md` always apply. If a rule blocks you, stop and ask.
 - Gates: `python3 kit/scripts/gate_check.py ready|done --change openspec/changes/<name>`. A failed gate is never waived.
+  Local runs are early feedback; the CI run on the PR is the one that counts (`kit/INSTALL.md`).
 - Thresholds live in `docs/ai/policy.yml` (the kit floor `kit/core/policy.yml` applies when it is missing). Raise them freely.
 - Lowering a threshold needs `docs/ai/policy-signoff.json`, written by a human in their own PR. You never edit policy, sign-off, `kit/`, `.claude/` or `CLAUDE.md`: `gate.diff_scope` fails if you do.
 

@@ -15,3 +15,5 @@ purpose: shared terms used by every component; new terms are added here, not red
 | observed / inferred / confirmed | Confidence of a fact. Only `confirmed` may become a spec |
 | Playbook | Steps for one work item type |
 | Capability / adapter | Interface for a tool kind / one tool that implements it |
+| green / amber / red | Granularity score of a slice: fine / review / must split. Two ambers also mean split |
+| L0 to L3 | Knowledge load levels: always loaded, module card, symbols, raw source |

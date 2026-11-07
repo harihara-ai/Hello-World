@@ -32,12 +32,12 @@ class ListedFiles(unittest.TestCase):
 
     def test_dotnet_and_java_test_layouts_are_not_production(self):
         files = ["MyApp.Tests/Helpers/Builder.cs", "src/test/java/a/FeeTest.java", "Billing.UnitTests/X.cs"]
-        rc, _, log = scope(files, ["*"], no_production=True)
+        rc, _, log = scope(files, ["MyApp.Tests/*", "src/test/*", "Billing.UnitTests/*"], no_production=True)
         self.assertEqual(rc, 0, log)
 
     def test_protected_paths_fail_even_inside_scan(self):
         for p in ("docs/ai/policy.yml", "docs/ai/policy-signoff.json", "kit/gates/coverage.py", ".claude/settings.json", "CLAUDE.md"):
-            rc, out, _ = scope([p], ["*"])
+            rc, out, _ = scope([p], ["*.*", "*/*"])
             self.assertEqual(rc, 1, p)
             self.assertIn("protected_path", rules(out))
 
@@ -77,6 +77,22 @@ class GitMode(unittest.TestCase):
 
     def test_bad_base_is_usage_error(self):
         self.assertEqual(run_gate("diff_scope", {"base": "--output=/tmp/x", "impact_scan": ["*"]}, cwd=self.d)[0], 2)
+
+
+    def test_more_agent_steering_files_are_protected(self):
+        for p in (".mcp.json", "src/CLAUDE.md", ".husky/pre-commit", ".vscode/tasks.json", ".pre-commit-config.yaml",
+                  ".gitlab-ci.yml", "app/.claude/commands/x.md"):
+            rc, out, _ = scope([p], ["*.*", "*/*"])
+            self.assertIn("protected_path", rules(out), p)
+
+    def test_case_insensitive_test_folders_and_md_and_conftest(self):
+        rc, _, log = scope(["Tests/FeeTest.cs", "README.md", "tests/conftest.py", "Test/x.pas"], ["Tests/*", "README.md", "tests/*", "Test/*"], no_production=True)
+        self.assertEqual(rc, 0, log)
+
+    def test_bare_wildcard_scan_refused(self):
+        for scan in (["*"], ["**"], ["src/a.py", "**/*"]):
+            rc, out, _ = scope(["src/a.py"], scan)
+            self.assertIn("scan_too_broad", rules(out), scan)
 
 
 if __name__ == "__main__":

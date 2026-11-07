@@ -68,5 +68,11 @@ class Granularity(unittest.TestCase):
         self.assertEqual(score()[0], 1)
 
 
+    def test_characterized_is_green_when_plan_has_slice_zero(self):
+        s0 = dict(GOOD, id="S0", kind="characterization")
+        rc, out, log = score(s0, dict(GOOD, id="S1", untested="characterized", title="Reject expired or revoked token"))
+        self.assertEqual(rc, 0, log)
+
+
 if __name__ == "__main__":
     unittest.main()

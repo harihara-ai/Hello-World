@@ -39,7 +39,7 @@ def requirements(body):
     for n, line in body:
         if line.startswith("### "):
             reqs.append({"title": line[4:].strip(), "line": n, "errors_none": False, "scenarios": []})
-        elif reqs and line.strip().lower() == "errors: none":
+        elif reqs and re.fullmatch(r"errors:\s*none\.?", line.strip().lower()):
             reqs[-1]["errors_none"] = True
         elif reqs and SCENARIO.match(line.strip()):
             reqs[-1]["scenarios"].append({"title": line.strip().split(":", 1)[1].strip(), "line": n, "body": []})
@@ -97,11 +97,11 @@ def check(p):
         if s not in secs and not (no_reqs and s == "Requirements"):
             f.append(finding("section", "missing section '## %s'" % s))
     for n, line in secs.get("Open questions", []):
-        if line.strip() and line.strip().lower().rstrip(".") not in NONE:
+        if line.strip() and line.strip().lstrip("-* ").lower().rstrip(".") not in NONE:
             f.append(finding("open_questions", "open question must be resolved: %s" % line.strip(), "line %d" % n))
     for n, line in secs.get("Non-functional", []):
         t = line.strip()
-        if t and t.lower().rstrip(".") not in NONE and not MEASURE.search(t) and not STANDARD.search(t):
+        if t and t.lstrip("-* ").lower().rstrip(".") not in NONE and not MEASURE.search(t) and not STANDARD.search(t):
             f.append(finding("nfr_threshold", "NFR needs a number or a named standard: %s" % t, "line %d" % n))
     for name in SCORED & set(secs):
         for n, line in secs[name]:

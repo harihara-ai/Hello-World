@@ -21,7 +21,7 @@ TESTABLE = {"yes": "green", "stub": "amber"}
 SIZE_ONLY = ("lines", "symbols", "files")
 
 
-def score(s, pol):
+def score(s, pol, has_slice0=False):
     reasons, char = [], s.get("kind") == "characterization"
     for m, default in DEFAULTS.items():
         if char and m in SIZE_ONLY:
@@ -34,7 +34,7 @@ def score(s, pol):
             reasons.append(("red", "%s %s > %s" % (m, v, amber)))
         elif v > green:
             reasons.append(("amber", "%s %s > %s" % (m, v, green)))
-    u = "green" if char else UNTESTED.get(s.get("untested"), "red")
+    u = "green" if char or (has_slice0 and s.get("untested") == "characterized") else UNTESTED.get(s.get("untested"), "red")
     if u != "green":
         reasons.append((u, "untested code: %s (characterization slice must come first)" % s.get("untested")))
     t = TESTABLE.get(s.get("testable"), "red")
@@ -53,8 +53,9 @@ def check(p):
     if not slices:
         return [finding("no_slices", "no slice plan given")], {"slices": []}
     f, out = [], []
+    has_slice0 = any(s.get("kind") == "characterization" for s in slices)
     for s in slices:
-        overall, split, reasons = score(s, pol)
+        overall, split, reasons = score(s, pol, has_slice0)
         out.append({"id": s.get("id"), "score": overall, "reasons": reasons})
         if split:
             f.append(finding("split", "split this slice: " + "; ".join(reasons), str(s.get("id"))))

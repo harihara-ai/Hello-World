@@ -21,7 +21,7 @@ def git_changed(base):
     if not re.fullmatch(r"[\w./~^@-]+", base) or base.startswith("-"):
         raise UsageError("bad base ref")
     names = set()
-    for cmd in (["git", "diff", "--name-only", "--no-renames", base, "--"],
+    for cmd in (["git", "-c", "core.quotePath=false", "diff", "--no-ext-diff", "--name-only", "--no-renames", base, "--"],
                 ["git", "ls-files", "--others", "--exclude-standard"]):
         out = subprocess.run(cmd, capture_output=True, text=True)
         if out.returncode != 0:
@@ -42,10 +42,13 @@ def check(p):
         raise UsageError("need 'base' in a git repo, or 'changed_files' outside git")
     ch = p.get("change_dir", "").rstrip("/")
     changed = [c for c in changed if not (ch and c.startswith(ch + "/")) and "__pycache__/" not in c]
+    f += [finding("protected_path", "a human changes this file in its own PR: %s" % c, c) for c in changed if matches(c, PROTECTED)]
     scan = p.get("impact_scan", [])
     if not scan:
         return f + [finding("no_impact_scan", "no impact scan given")], {}
-    f += [finding("protected_path", "a human changes this file in its own PR: %s" % c, c) for c in changed if matches(c, PROTECTED)]
+    broad = [g for g in scan if g.strip("*/") == ""]
+    if broad:
+        return f + [finding("scan_too_broad", "impact scan must name files or folders, not %s" % broad)], {}
     f += [finding("outside_scan", "changed but not in the impact scan: %s" % c, c) for c in changed if not matches(c, scan)]
     if p.get("no_production"):
         f += [finding("production_change", "this work item may not change production files: %s" % c, c)

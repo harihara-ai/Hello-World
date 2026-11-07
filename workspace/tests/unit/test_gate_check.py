@@ -82,13 +82,20 @@ class GateCheck(unittest.TestCase):
     def test_policy_flag_removed(self):
         self.assertEqual(gate_check(self.root, self.ch, "done", "--policy", "x.yml")[0], 2)
 
-    def test_chore_skips_trace_check(self):
+    def test_chore_runs_trace_check_with_nothing_to_check(self):
         text = "# Change: tidy\nTicket: OPS-1\nType: chore\n\n## Problem\nOld logging.\n\n## Outcome\nOne logger.\n\n## Non-functional\nnone\n\n## Out of scope\nBehaviour.\n\n## Open questions\nnone\n"
         write(self.root, self.ch + "/spec.md", text)
         os.remove(os.path.join(self.root, "tests/test_discount.py"))
         rc, out, log = gate_check(self.root, self.ch, "done")
         self.assertEqual(rc, 0, log)
-        self.assertNotIn("trace_check", [g["gate"] for g in out["gates"]])
+        self.assertIn("trace_check", [g["gate"] for g in out["gates"]])
+
+    def test_type_cannot_drop_a_gate(self):
+        write(self.root, self.ch + "/spec.md", CLEAN_SPEC.replace("Type: story", "Type: refactor"))
+        write(self.root, "tests/test_discount.py", "# REQ-DISC-001\n")
+        rc, out, _ = gate_check(self.root, self.ch, "done")
+        self.assertEqual(rc, 1)
+        self.assertIn("trace_check", [g["gate"] for g in out["gates"] if not g["pass"]])
 
     def test_tests_type_forces_no_production_and_flaky(self):
         write(self.root, self.ch + "/spec.md", CLEAN_SPEC.replace("Type: story", "Type: tests"))
@@ -99,17 +106,60 @@ class GateCheck(unittest.TestCase):
         self.assertEqual(names, ["diff_scope"])
         self.assertIn("flaky", [g["gate"] for g in out["gates"]])
 
-    def test_git_mode_uses_default_base(self):
+    def test_git_without_remote_needs_a_base(self):
         git_init(self.root)
-        rc, _, log = gate_check(self.root, self.ch, "done")
+        rc, out, log = gate_check(self.root, self.ch, "done")
+        self.assertEqual(rc, 2, log)
+
+    def test_git_mode_with_base(self):
+        git_init(self.root)
+        rc, _, log = gate_check(self.root, self.ch, "done", "--base", "HEAD")
         self.assertEqual(rc, 0, log)
         write(self.root, "src/newsletter.py", "x = 1\n")
-        rc, out, _ = gate_check(self.root, self.ch, "done")
+        rc, out, _ = gate_check(self.root, self.ch, "done", "--base", "HEAD")
         self.assertEqual(rc, 1)
         self.assertIn("src/newsletter.py", json.dumps(out))
 
     def test_bad_stage(self):
         self.assertEqual(gate_check(self.root, self.ch, "merge")[0], 2)
+
+
+    def test_change_must_be_a_change_folder(self):
+        for bad in ("docs/ai", "openspec/changes", "openspec/changes/a/b", "src"):
+            self.assertEqual(gate_check(self.root, bad, "done")[0], 2, bad)
+
+    def test_signoff_is_read_from_base_not_working_tree(self):
+        git_init(self.root)
+        p = os.path.join(self.root, "docs/ai/policy.yml")
+        with open(p) as fh:
+            text = fh.read()
+        write(self.root, "docs/ai/policy.yml", text.replace("max_spec_lines: 300", "max_spec_lines: 9000"))
+        write(self.root, "docs/ai/policy-signoff.json", {"approved_by": "x", "reason": "y", "keys": {"max_spec_lines": 9000}})
+        rc, out, _ = gate_check(self.root, self.ch, "ready", "--base", "HEAD")
+        self.assertEqual(rc, 1)
+        self.assertIn("policy_guard", [g["gate"] for g in out["gates"] if not g["pass"]])
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "human sign-off")
+        write(self.root, "docs/ai/policy.yml", text.replace("max_spec_lines: 300", "max_spec_lines: 9000"))
+        rc, out, _ = gate_check(self.root, self.ch, "ready", "--base", "HEAD")
+        self.assertEqual(rc, 0, json.dumps(out)[:400])
+
+    def test_planted_bytecode_is_not_loaded(self):
+        import py_compile
+        import shutil
+        kit = os.path.join(tempfile.mkdtemp(), "kit")
+        shutil.copytree(KIT, kit)
+        fake = os.path.join(tempfile.mkdtemp(), "gateio.py")
+        with open(fake, "w") as fh:
+            fh.write("import json, sys\nUsageError = Exception\ndef finding(*a, **k): return {}\n"
+                     "def run(gate, check, argv=None):\n    print(json.dumps({'gate': gate, 'pass': True, 'findings': []}))\n    return 0\n")
+        tag = sys.implementation.cache_tag
+        py_compile.compile(fake, cfile=os.path.join(kit, "scripts", "__pycache__", "gateio.%s.pyc" % tag),
+                           invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH)
+        write(self.root, self.ch + "/spec.md", "junk\n")
+        rc, _, log = run_py(os.path.join(kit, "scripts", "gate_check.py"), None,
+                            ["ready", "--repo", self.root, "--change", self.ch])
+        self.assertEqual(rc, 1, log)
 
 
 if __name__ == "__main__":

@@ -62,5 +62,27 @@ class Trace(unittest.TestCase):
         self.assertIn("orphan_id", rules(out))
 
 
+    def test_ids_in_ticket_are_not_requirements(self):
+        write(self.root, self.ch + "/ticket.md", "Related to REQ-OLD-007.\n")
+        self.assertEqual(self.check()[0], 0)
+
+    def test_common_test_name_prefixes(self):
+        os.remove(os.path.join(self.root, "tests/test_discount.py"))
+        write(self.root, "tests/DiscountTest.php", "function testREQ_DISC_001_ten() {}\nfunction shouldReq_Disc_002() {}\n")
+        self.assertEqual(self.check()[0], 0)
+
+    def test_plain_text_files_do_not_count(self):
+        os.remove(os.path.join(self.root, "tests/test_discount.py"))
+        write(self.root, "tests/ids.txt", "REQ-DISC-001 REQ-DISC-002\n")
+        write(self.root, "tests/test_other.py", "# none\n")
+        self.assertEqual(self.check()[0], 1)
+
+    def test_no_ids_passes_only_for_types_without_requirements(self):
+        write(self.root, self.ch + "/spec.md", "Type: chore\nnothing\n")
+        self.assertEqual(self.check(type="chore")[0], 0)
+        self.assertEqual(self.check(type="refactor")[0], 0)
+        self.assertEqual(self.check(type="story")[0], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
