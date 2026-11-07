@@ -35,3 +35,8 @@ CART-3 from the test bed), `ci2.sh` (tests job, then gate job with own dir, own 
 
 Not run: `/bootstrap` itself (agent-driven); a hosted CI (session B); unzip on Windows or with a GUI tool; an upgrade
 over an installed kit (delete `kit/`, unzip again).
+
+## Pinned (human-approved "Approved")
+changed=1 (`kit/INSTALL.md`, high-risk), kit.lock sha256 cbd77c98... (same as the scratch pin). After the pin: tangle 70;
+lint 49 clean; selftest lock match, forge 30, unit 170, contract 5, mutation 14 OK; run_traps (1 run) 22/22, critical
+17/17, other 5/5, false alarms 0.

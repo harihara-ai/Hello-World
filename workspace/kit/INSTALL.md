@@ -3,12 +3,12 @@
 purpose: the one place that says where kit files go in a target repo, what a human protects, and how CI enforces the gates.
 
 ## Files
-1. Copy `kit/` to the repo root as `kit/`, and `kit.manifest.yml` to the root.
-2. Copy `kit/.claude/commands/*.md` to `.claude/commands/` (Claude Code reads commands only there).
-3. Add the line `@kit/CLAUDE.md` to the root `CLAUDE.md` (create it if missing).
-4. Needs `python3` (3.8 or later) and `git`. Nothing is installed; no hooks are added.
-   Add `__pycache__/`, `.coverage` and `openspec/changes/*/gates-*.json` (local and test output) to `.gitignore`.
-5. Add the CI jobs (below) in this same PR. A human merges it (CI gates start with the next PR). Then run `/bootstrap`; it ends with its own PR.
+Needs `python3` (3.8 or later) and `git`. Nothing is installed; no hooks are added. In one install PR, by a human:
+1. Unzip `northstar-kit-install.zip` at the repo root. It adds `kit/`, `kit.manifest.yml` and `.claude/commands/`
+   (Claude Code reads commands only there). It holds no root `CLAUDE.md`, so yours is never overwritten.
+2. Add the line `@kit/CLAUDE.md` to the root `CLAUDE.md` (create it if missing), and `__pycache__/`, `.coverage` and
+   `openspec/changes/*/gates-*.json` to `.gitignore`. Add CODEOWNERS and the CI jobs (both below).
+3. A human merges it (CI gates start with the next PR). Then run `/bootstrap`; it ends with its own PR.
 
 ## What a human protects
 Put every pattern in `PROTECTED` in `kit/scripts/kitconst.py` into `CODEOWNERS`. That one list is what
@@ -58,4 +58,4 @@ Hotfix at night: an admin merges with the check overridden; within 5 working day
 `evidence.md` naming the merged commit (`kit/playbooks/bug.md`).
 
 ## Upgrade
-Replace `kit/` and `kit.manifest.yml` in one human PR, copy the commands again (Files, step 2), then run `/refresh`.
+In one human PR, delete `kit/` and unzip the new install zip at the root (Files, step 1), then run `/refresh`.

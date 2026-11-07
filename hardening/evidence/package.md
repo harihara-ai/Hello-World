@@ -13,3 +13,12 @@ purpose: phase 6 package build and its verification (2026-11-07).
 - Unpacked to a fresh folder: 70 workspace files match kit.lock, none outside the lock; INSTALL has the two CI jobs.
 - In the unpacked package: kit tests unit 170, contract 5, mutation 14 OK; forge tests OK; run_traps (1 run) 22/22,
   false alarms 0. The 5-run repeat ran on the repo's pinned workspace, same files.
+
+## Rebuild 1.0.2 (2026-11-07, after fix plan item 5)
+- Built: `bash forge/forge.sh package` -> dist/northstar-kit.zip, 159698 bytes, 166 entries, no bytecode,
+  sha256 b81942efbbcdd7a7c8667e43640637886b3c246833e8254dac35dfdfd69edb28; dist/northstar-kit-install.zip, 56822 bytes,
+  58 entries (kit/, kit.manifest.yml, .claude/commands/), no root CLAUDE.md, no bytecode,
+  sha256 82584df5d068630d8a3b980e4f15ea7342ea30d7b7bc3eafadd3fc64878b50a0 (written after the build, so the full zip holds
+  this file without this section).
+- The built install zip, unzipped into a fresh synthetic repo: root CLAUDE.md kept; plan PR ready pass, exit 0; clean
+  code PR done pass, exit 0; out-of-scope control exit 1 (two-job recipe simulated, `install-zip.md`).

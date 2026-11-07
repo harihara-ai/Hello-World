@@ -2,6 +2,12 @@
 
 purpose: what changed in the North Star kit, by phase and hardening round.
 
+## 1.0.2-silver-synthetic (2026-11-07)
+- **G24 (fix plan item 5):** `forge.sh package` also builds `dist/northstar-kit-install.zip` with repo-root paths
+  (`kit/`, `kit.manifest.yml`, `.claude/commands/`; no root `CLAUDE.md`). INSTALL Files: 5 steps to 3.
+- **Re-check:** forge 30, unit 170, contract 5, mutation 14 OK; run_traps (1 run) 22/22, 0 false alarms; unzip
+  walk-through with plan and code PRs on the two-job recipe (simulated). T7 not run.
+
 ## 1.0.1-silver-synthetic (2026-11-07)
 - **After-cap check (R2, R5):** L01, L03, L04 hold. L02 was bypassed by a test that plants a git hook or git config (M01):
   CI is now two jobs, and the gate job runs on a fresh runner with no PR code before the gates.

@@ -10,8 +10,9 @@ A small kit that makes Claude Code work on a repo through specs, slices and dete
 each plan by merging its PR, and CI runs the gates on every PR with the approved kit from the target branch.
 
 ## Install
-Follow `workspace/kit/INSTALL.md`: copy `kit/`, the commands and the root `CLAUDE.md` line, protect the paths in
-`kit/scripts/kitconst.py` and the listed build files with CODEOWNERS, add the two CI jobs, then run `/bootstrap` and `/genie`.
+Unzip `northstar-kit-install.zip` at the target repo's root (it adds `kit/`, `kit.manifest.yml` and `.claude/commands/`,
+never a root `CLAUDE.md`), then follow `kit/INSTALL.md` Files: the root `CLAUDE.md` line, `.gitignore`, CODEOWNERS
+and the two CI jobs, in one human PR. Then run `/bootstrap` and `/genie`.
 
 ## Contents
 | Path | What |
