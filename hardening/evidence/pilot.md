@@ -22,6 +22,14 @@ Repos (owner choice): legacy `harihara-ai/commons-lang` (Java, Maven, JaCoCo, PI
   Serena not installed); tracker file (owner choice; Issues off). Tests with `dist/` built: 440 pass; lines 99.9%,
   branches 99.09%. Local gate: pass, "no change folder: only docs or human-owned files changed". PR koa#2.
 
+## commons-lang install
+- Full suite here (Java 21, Maven, JaCoCo via commons-parent, rat/japicmp/checkstyle/pmd/spotbugs/javadoc skipped):
+  89127 tests, 0 failures, 16 skipped, 204 s; JaCoCo XML total 96.57%, 216 files; `cov_import.match` maps
+  `src/main/java/org/apache/commons/lang3/CharUtils.java` to the JaCoCo path.
+- Maven takes class names, so `{tests}` goes through `.github/northstar/mvn-tests.sh` (tracked, run from
+  `../approved`): exit 0 on CharUtilsTest + BitFieldTest (4 s), 1 with `CharUtils.isAscii` broken, 5 with no files.
+- Install PR commons-lang#1. GitHub lists 0 workflows on the fork (Actions likely off): owner enables.
+
 ## Findings
 ```
 id: P01
