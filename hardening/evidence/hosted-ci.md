@@ -110,3 +110,6 @@ Access lost after #17: GitHub MCP "sign in again", `git fetch` 403, unauthentica
 Not run: #17's final `gate` result (expected failure from master's copy: protected_path, outside_scan); review
 requirement isolated from a failing gate (needs passing checks on a code-owned path); #3 merge commit and its baseline
 run; ruleset reads; owner approving a bot PR; a bot PR to master under the new master ruleset.
+Decision (owner, after the access loss): drop fix (a) and the bot account. Kept: CI from master (b), gate
+`protected_path` (w1b, w2 blocked), rulesets, and the rule that only a human merges (not enforced: accepted limit).
+INSTALL source edited in `proposal/modules/01-core.md`; not tangled, not pinned.

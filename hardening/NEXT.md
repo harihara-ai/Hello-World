@@ -45,9 +45,9 @@ Start with item 1 and stop when it is done.
   for the bot was refused by the session (github.com uses the GitHub connection only). Owner linked Claude's GitHub to
   harihara-ai-bot (2026-11-07); the old session's GitHub tools then failed (`invalid session`): start B2 fresh. Owner: rulesets per part 4 of
   session B (block force pushes on trial-main; master ruleset; admin bypass for PRs only). Append to `evidence/hosted-ci.md`.
-- **B3. Finish B2 reads** (B2 lost GitHub access after PR #17: bot API "account suspended", git 403). Owner checks the bot
-  account at github.com (suspension appeal if shown) and relinks Claude's GitHub. Read #17 checks, #3 merge and baseline
-  run, both rulesets; owner approves nothing on #17 and closes it. Append to `evidence/hosted-ci.md`.
+- **B3. Close B2** (after the owner relinks Claude's GitHub to harihara-ai; the bot is dropped). Push the B2 commit;
+  read #17's checks, close it unmerged; read #3's merge, the next baseline run and both rulesets; tangle the INSTALL
+  edit (N01 a dropped), show the pin diff, pin on the owner's yes, rebuild the package. Append to `evidence/hosted-ci.md`.
 - **C. Pilot** per the Gold plan, with item 2 (diff-scoped mutation testing) set up per stack.
 
 ## Fix plan for the known issues (value first, effort second)
@@ -69,7 +69,7 @@ Pre-pilot items done (1, 1b, 1c, 3, 4, 5). Do 2 while setting the pilot up. Leav
 | Item | Risk if wrong | When |
 | --- | --- | --- |
 | CI recipe on a hosted CI: run on GitHub Actions (`evidence/hosted-ci.md`); holds for plan, clean, t2-t4, d1, f1, failing tests, w1b, w2 | - | closed for GitHub-hosted Python; other hosts and stacks per pilot |
-| N01 (a): PRs from the AI's own account; #17 (bot) got code-owner review requested and blocked; final gate, owner approval not read | a workflow or kit edit merges unreviewed | B3, once bot access works |
+| N01 (a) dropped (owner, B2): accepted limit; the AI acts through the owner's account, so "only a human merges" is a rule, not enforced | an AI merge looks like the owner's | accepted; gate protected_path and CI from master stay |
 | Master ruleset added by the owner (B2), not read via API; no bot PR to master tried | CI rewritten outside review | B3 |
 | pull_request_target: PR tests run with a read-only token; cache or token abuse not tried | base-branch cache poisoning | pilot setup |
 | Force-push block (owner set it, B2) and PR #3 merge (owner did it) not read; next baseline run not read | baseline chain untested past one merge | B3 |
