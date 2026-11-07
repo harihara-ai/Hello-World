@@ -10,5 +10,5 @@ new_findings_threshold: 2 per round
 open_blockers: 0 open; L01-L04 fixed after the cap and pinned, not swarm-reviewed
 open_majors: deferred G19 (symbol-level scope), G20 (no-coverage stacks), F17; G18 in part
 consecutive_clean_rounds: 0 (round 6 had 3 blockers; cap reached)
-doc_revision_synced: not synced (write-back list in findings.md)
+doc_revision_synced: synced 2026-11-07 (sections 3, 8, 10.2, 10.4, 10.6, 11.2, 11.3, 22.4)
 notes: phase 0 confirmed (round cap 6, Silver, synthetic test bed, no budget cap; ralph.sh has no budget check). Keep governance minimal. Phase 1 approved and pinned (43 stubs). Phase 2 built in source: 44 components + tests, 86 tests green on scratch tangle, lint clean; phase 2 pinned. Phase 3 test bed built (hardening/testbed, 14 cases). Owner (round 4): avoid heavier governance; prefer cuts.

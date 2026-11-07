@@ -24,11 +24,11 @@ Adaptive, repo-agnostic spec-driven delivery with Claude Code. Proposal v0.2, 7 
 
 | Command | When | What it does |
 | --- | --- | --- |
-| `/bootstrap` | Once per repo | Probe tools, detect practices, write index and policy |
+| `/bootstrap` | Once per repo, in its own PR | Probe tools, detect practices, write the index (a human owns `policy.yml`) |
 | `/learn <module>` | First time a module is touched | Reverse-engineer behaviour and design for that module only |
-| `/slice <change>` | After spec passes ready gate | Impact scan, granularity score, split, slice plan |
-| `/implement <slice>` | Per approved slice | Red-green-refactor, evidence, commit |
-| `/gate ready \| done` | Before slicing, before PR | Runs deterministic checks, then AI review, then asks for human sign-off |
+| `/slice <change>` | After the spec is drafted | Impact scan, granularity score, split, slice plan; then the ready gate and the plan PR |
+| `/implement <slice>` | Per approved slice, after the plan PR is merged | Red-green-refactor, evidence, commit |
+| `/gate ready \| done` | Plan PR, code PR (picked from git) | Runs deterministic checks, then AI review; the human merge is the sign-off |
 | `/refresh` | After merges | Incremental update of index and maps |
 
 ## 4. Tool selection with fallbacks
@@ -120,7 +120,7 @@ The tracker adapter reads the ticket type and maps it to a playbook. Unknown typ
 | Epic or Feature | Epic | Epic, Feature | Milestone or label | No. It is decomposed into Changes. | Decompose into stories | None. Closed when children are done |
 | Story or Enhancement | Story | User Story | Issue label `feature` | Yes, new or delta spec | Ready gate | Full DoR and DoD |
 | Bug or Defect | Bug | Bug | Label `bug` | Only if behaviour was never specified | Failing reproduction test | Regression test carries a REQ ID. Root cause noted |
-| Production incident or Hotfix | Bug (priority high), Incident | Bug, Issue | Label `hotfix` | Retro-spec within 5 working days | Failing repro test | Fast-track ready gate. Done gate is not relaxed |
+| Production incident or Hotfix | Bug (priority high), Incident | Bug, Issue | Label `hotfix` | Yes, one-slice plan; after a night admin merge, a retro plan PR within 5 working days | Failing repro test | Same gates as a bug. Done gate is not relaxed |
 | Task or Chore | Task, Sub-task | Task | Label `chore` | No | Characterization tests green before and after | No behaviour change allowed |
 | Refactor or Tech debt | Task, Improvement | Task, Feature (tech) | Label `debt` | No, but a goal and a non-goal | Characterization tests | Behaviour identical. Complexity or coupling measured before and after |
 | Spike or Research | Spike, Story (spike) | Task or Issue | Label `spike` | No | Question and time box | Output is a findings doc. No production code merged |
@@ -167,7 +167,7 @@ Gates run in order. Each check is typed: **S** script, **A** AI review, **H** hu
 | 8 | Affected modules and contracts identified (impact scan) | S |
 | 9 | `spec-lint` passes. AI ambiguity review has no blocking items | S + A |
 | 10 | Slice plan exists and passes the granularity check (section 11) | S |
-| 11 | Human approves the spec and the slice plan | H |
+| 11 | Human approves the spec and the slice plan by merging the plan PR. The code goes in a second PR; the done gate reads the plan from the base commit and fails if the code PR changes it | H |
 
 ### 10.3 Gate G2: Slice Definition of Ready
 
@@ -177,7 +177,7 @@ Slice has a goal, requirement IDs, scenarios, test levels, files and symbols in 
 
 | # | Check | Type |
 | --- | --- | --- |
-| 1 | RED recorded then GREEN recorded for every scenario | S |
+| 1 | RED recorded then GREEN recorded for every scenario; in CI the changed tests must fail on the base commit's code (`red_check`) | S |
 | 2 | Unit tests for new logic | S |
 | 3 | API or contract tests for every touched endpoint, message or schema | S |
 | 4 | Behaviour or acceptance tests for every user-facing scenario | S |
@@ -194,8 +194,11 @@ All slices done, plus: NFR checks run (performance budget, security scan, depend
 
 ### 10.6 Floor guarantee and ceiling
 
-- Gates live in `docs/ai/policy.yml` and a script returns pass/fail as JSON. CI runs the same script, so local and CI results match.
-- The AI cannot edit the floor. A repo can add checks (mutation testing, contract tests, stricter coverage). Lowering a threshold needs a recorded human reason.
+- Gates live in `docs/ai/policy.yml` and a script returns pass/fail as JSON. Local runs are early feedback; the run that counts is CI on every PR, using the approved kit from the target branch in its own worktree, the merge-base as base, and coverage produced by CI.
+- Every fact a gate uses comes from git, the base commit or CI, never from files the agent writes: the policy baseline and sign-off are read from the base commit, and `policy_guard` runs at both stages.
+- The AI cannot edit the floor. Policy, sign-off, the kit, `.claude/` and `CLAUDE.md` are protected: an AI change that touches them fails, and CODEOWNERS sends them to a human. A repo can add checks (mutation testing, contract tests, stricter coverage). Lowering a threshold needs a human sign-off that names the key and the new value.
+- The work item type can only tighten the gates, never drop one.
+- What the floor cannot prove: that tests for brand-new code assert the right thing, that edited tests were not weakened, or that coverage settings in general build files were not loosened. AI test review, the human PR review and mutation testing cover these.
 - Optional ceiling items: mutation testing (Stryker, PIT, Infection), property tests, load tests, accessibility audits, and a second AI reviewer on risky slices.
 - Convergence rule: a task that fails 3 times stops and reports. No gate is waived to make progress.
 
@@ -220,7 +223,7 @@ Granularity decides success, so it is a **gate**, not a suggestion.
 4. **Split** any amber or red slice using the split rules.
 5. **Order** slices by dependency. Mark which can run in parallel.
 6. **Add Slice 0** when legacy code is untested: characterization tests only.
-7. **Human approves** the slice plan (part of G1).
+7. **Human approves** the spec and slice plan by merging the plan PR (G1). The code follows in its own PR.
 
 ### 11.3 Granularity score (defaults, tuned per repo)
 
@@ -234,9 +237,9 @@ Granularity decides success, so it is a **gate**, not a suggestion.
 | Context needed (files to read) | up to 8 | 9 to 15 | 16 or more |
 | Untested code touched | none | has characterization slice first | unknown |
 | Independently demoable or testable | yes | needs a stub | no |
-| Requirement title contains "and" or "or" | no |  | yes (check for hidden second requirement) |
+| Requirement title contains "and" or "or" | no | yes (check for hidden second requirement) |  |
 
-Any red means split. Two or more ambers also means split. Legacy repos start with tighter limits than modern ones.
+Any red means split. Two or more ambers also means split. A characterization slice (Slice 0) is not held to the size limits; once the plan has one, "untested code touched" is green for the slices after it. Legacy repos start with tighter limits than modern ones.
 
 ### 11.4 Split rules, in order of preference
 
@@ -640,8 +643,8 @@ Anyone who can edit the doc could plant code, so extraction is treated as untrus
 
 - Tangle writes files only. It never executes or imports them.
 - Paths must be relative, inside `workspace/`, and match the allowlist. `..`, absolute paths, symlinks and unknown extensions are refused.
-- Every file must match the sha256 in the manifest. A changed file needs the manifest diff approved by a human.
-- Hooks, `settings.json`, CI files and install scripts are high-risk. They need a separate approval and are listed in the diff.
+- Every file must match the sha256 in `kit.lock`. A changed file needs the lock diff approved by a human.
+- Hooks, `settings.json`, CI files, install scripts, commands, `CLAUDE.md`, gates, scripts and `policy.yml` are high-risk at any folder depth. They need a separate approval at pin time and are marked in the diff. Commented-out blocks are not tangled, and the workspace is checked byte for byte against the lock before self-test and package.
 - Comments, suggestions and other tabs are excluded from extraction.
 - Pull a pinned revision, not the latest. Doc edit rights are limited to named editors.
 - Stages 4 to 6 run in a sandbox with no secrets. Model API keys are provided only to the harden stage.
